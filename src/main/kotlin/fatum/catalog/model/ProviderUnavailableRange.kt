@@ -48,6 +48,7 @@ class ProviderUnavailableRange(
     val reason: String? get() = _reason
 
     init {
+        if(providerId.isBlank()) throw FatumServiceException(FatumServiceException.BLANK)
         validateDates(startDate, finalDate)
         _startDate = startDate
         _finalDate = finalDate

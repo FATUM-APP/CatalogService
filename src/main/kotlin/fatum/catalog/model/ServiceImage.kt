@@ -17,10 +17,6 @@ import jakarta.persistence.JoinColumn
 
     @Column(name = "FILE_SIZE", nullable = false)
     val fileSize: Long = 0,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "SERVICE_ID", referencedColumnName = "ID", nullable = false)
-    val service: CatalogItem,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

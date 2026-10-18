@@ -50,6 +50,7 @@ class ProviderAvailability(
     private var _finalTime: LocalTime
 
     init {
+        if(providerId.isBlank()) throw FatumServiceException(FatumServiceException.BLANK)
         validateTimes(initialTime, finalTime)
         _initialTime = initialTime.withSecond(0).withNano(0)
         _finalTime = finalTime.withSecond(0).withNano(0)

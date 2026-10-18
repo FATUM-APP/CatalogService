@@ -28,9 +28,8 @@ class CatalogItem(
 
     @Column(name = "PROVIDER_ID", length = 36, nullable = false)
     val providerId: String,
-
     title: String,
-    description: String,
+    description: String? = null,
 
     @Column(name = "BASE_PRICE", nullable = false)
     private var _basePrice: BigDecimal = BigDecimal.ZERO,
@@ -47,18 +46,19 @@ class CatalogItem(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "JOB_TYPE", length = 10, nullable = false)
-    private var _jobType: JobType = JobType.PRESENCIAL,
+    private var _jobType: JobType,
 
     @ManyToOne
     @JoinColumn(name = "CATEGORY", referencedColumnName = "NAME", nullable = false)
     private val category: Category,
 
     @OneToMany(mappedBy = "service", cascade = [CascadeType.ALL], orphanRemoval = true)
+    @JoinColumn(name = "SERVICE_ID", nullable = false)
     private val _serviceCatalog: MutableList<ServiceImage> = mutableListOf(),
 
     @Column(name = "FIXED_QUESTIONS", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
-    private var _fixedQuestions: MutableList<FixedQuestion> = mutableListOf()
+    private var _fixedQuestions: Set<FixedQuestion> = emptySet()
 
     ) {
     @Id
@@ -71,7 +71,7 @@ class CatalogItem(
     private var _title: String = toTitle(title)
 
     @Column(name = "DESCRIPTION", columnDefinition = "TEXT", nullable = false)
-    private var _description: String = description.trim()
+    private var _description: String? = description?.trim()
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STATUS", length = 12, nullable = false)
@@ -79,12 +79,15 @@ class CatalogItem(
 
 
     init {
-        if(_basePrice < BigDecimal.ZERO) throw FatumServiceException(FatumServiceException.NEGATIVE_PRICE)
+        if(providerId.isBlank()) throw FatumServiceException(FatumServiceException.BLANK)
+        if(_title.isBlank()) throw FatumServiceException(FatumServiceException.BLANK)
+        if(_basePrice.compareTo(BigDecimal.ZERO) < 0) throw FatumServiceException(FatumServiceException.NEGATIVE_PRICE)
         category.addService(this)
+
     }
 
     val title: String get() = _title
-    val description: String get() = _description
+    val description: String? get() = _description
     val basePrice: BigDecimal get() = _basePrice
     val priceType: PriceType get() = _priceType
     val isNegotiable: Boolean get() = _isNegotiable
@@ -92,17 +95,19 @@ class CatalogItem(
     val status: ServiceStatus get() = _status
     val jobType: JobType get() = _jobType
     val serviceCatalog: List<ServiceImage> get() = _serviceCatalog.toList()
-    val fixedQuestions: List<FixedQuestion> get() = _fixedQuestions.toList()
+    val fixedQuestions: Set<FixedQuestion> get() = _fixedQuestions
 
     fun changeTitle(newTitle: String) {
         _title = toTitle(newTitle)
     }
 
-    fun changeDescription(newDescription: String) {
-        _description = newDescription.trim()
+    fun changeDescription(newDescription: String? = null) {
+        _description = newDescription?.trim().toString()
     }
 
     fun changePrice(newPrice: BigDecimal) {
+        if(newPrice.compareTo(BigDecimal.ZERO) < 0)
+            throw FatumServiceException(FatumServiceException.NEGATIVE_PRICE)
         _basePrice = newPrice
     }
 
@@ -125,19 +130,22 @@ class CatalogItem(
         _jobType = newJobType
     }
 
-    fun addServiceImage(serviceImage: ServiceImage) {
-        _serviceCatalog.add(serviceImage)
+    fun updateFixedQuestions(newQuestions: Set<FixedQuestion>) {
+        _fixedQuestions = newQuestions
     }
 
-    fun removeServiceImage(serviceImage: ServiceImage) {
-        _serviceCatalog.remove(serviceImage)
+    fun clearFixedQuestions() {
+        _fixedQuestions = emptySet()
     }
 
-    fun addFixedQuestion(fixedQuestion: FixedQuestion) {
-        _fixedQuestions.add(fixedQuestion)
+    fun addImage(image: ServiceImage) {
+        _serviceCatalog.add(image)
     }
-    fun removeFixedQuestion(fixedQuestion: FixedQuestion) {
-        _fixedQuestions.remove(fixedQuestion)
+
+    fun removeImage(imageId: String): ServiceImage? {
+        val image = _serviceCatalog.find { it.id == imageId }
+        if (image != null) _serviceCatalog.remove(image)
+        return image
     }
 
     private fun toTitle(newTitle: String): String{

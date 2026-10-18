@@ -30,7 +30,7 @@ class Category(
     @OneToMany(mappedBy = "parent", cascade = [CascadeType.PERSIST, CascadeType.MERGE])
     private val _subcategories: MutableList<Category> = mutableListOf()
 
-    @OneToMany(mappedBy = "category", cascade = [CascadeType.PERSIST, CascadeType.MERGE])
+    @OneToMany(mappedBy = "category")
     private val _services: MutableList<CatalogItem> = mutableListOf()
 
     val catalogItems: List<CatalogItem> get() = _services.toList()

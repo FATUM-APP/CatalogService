@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service
 @Service
 class CatalogItemService(
     val catalogItemRepository: CatalogItemRepository
-) {
-    @Transactional
-    fun save(catalogItem: CatalogItem) = catalogItemRepository.save(catalogItem)
+){
+
 }
