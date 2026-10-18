@@ -31,9 +31,9 @@ class Category(
     private val _subcategories: MutableList<Category> = mutableListOf()
 
     @OneToMany(mappedBy = "category", cascade = [CascadeType.PERSIST, CascadeType.MERGE])
-    private val _services: MutableList<OfferedService> = mutableListOf()
+    private val _services: MutableList<CatalogItem> = mutableListOf()
 
-    val offeredServices: List<OfferedService> get() = _services.toList()
+    val catalogItems: List<CatalogItem> get() = _services.toList()
     val subcategories: List<Category> get() = _subcategories.toList()
     val isAble: Boolean get() = _isAble
     val schedulingModel: SchedulingModel? get() = _schedulingModel
@@ -53,14 +53,14 @@ class Category(
         this._subcategories.remove(subcategory)
     }
 
-    fun addService(offeredService: OfferedService) {
+    fun addService(catalogItem: CatalogItem) {
         if (_subcategories.isNotEmpty())
             throw FatumServiceException(FatumServiceException.CATEGORY_HAS_SUBCATEGORIES)
-        this._services.add(offeredService)
+        this._services.add(catalogItem)
     }
 
-    fun removeService(offeredService: OfferedService) {
-        this._services.remove(offeredService)
+    fun removeService(catalogItem: CatalogItem) {
+        this._services.remove(catalogItem)
     }
 
     fun disable() {

@@ -16,10 +16,14 @@ java {
 }
 
 repositories {
+	mavenLocal {
+		content { includeGroup("io.github.fatumapp") }
+	}
 	mavenCentral()
 }
 
 dependencies {
+	implementation("io.github.fatumapp:fatum-storage-spring-boot-starter:1.0.0-local")
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-validation")

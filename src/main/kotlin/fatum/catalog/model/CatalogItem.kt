@@ -24,7 +24,7 @@ import java.math.BigDecimal
         )
     ]
 )
-class OfferedService(
+class CatalogItem(
 
     @Column(name = "PROVIDER_ID", length = 36, nullable = false)
     val providerId: String,
@@ -33,7 +33,7 @@ class OfferedService(
     description: String,
 
     @Column(name = "BASE_PRICE", nullable = false)
-    private var _basePrice: BigDecimal,
+    private var _basePrice: BigDecimal = BigDecimal.ZERO,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "PRICE_TYPE", length = 12, nullable = false)
@@ -56,6 +56,10 @@ class OfferedService(
     @OneToMany(mappedBy = "service", cascade = [CascadeType.ALL], orphanRemoval = true)
     private val _serviceCatalog: MutableList<ServiceImage> = mutableListOf(),
 
+    @Column(name = "FIXED_QUESTIONS", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private var _fixedQuestions: MutableList<FixedQuestion> = mutableListOf()
+
     ) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -73,9 +77,7 @@ class OfferedService(
     @Column(name = "STATUS", length = 12, nullable = false)
     private var _status: ServiceStatus = ServiceStatus.ACTIVE
 
-    @Column(name = "FIXED_QUESTIONS", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private var _fixedQuestions: MutableList<FixedQuestion> = mutableListOf()
+
     init {
         if(_basePrice < BigDecimal.ZERO) throw FatumServiceException(FatumServiceException.NEGATIVE_PRICE)
         category.addService(this)
@@ -145,7 +147,7 @@ class OfferedService(
     }
 
     override fun equals(other: Any?): Boolean {
-        if (other !is OfferedService) return false
+        if (other !is CatalogItem) return false
         if (this === other) return true
         return this.id == other.id
     }
