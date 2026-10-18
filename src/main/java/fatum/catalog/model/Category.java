@@ -13,6 +13,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -20,11 +25,14 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "CATEGORIES")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Getter
 public class Category {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "SCHEDULING_MODEL", length = 14, nullable = false)
-    private SchedulingModel _schedulingModel;
+    private SchedulingModel schedulingModel;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PARENT_NAME", referencedColumnName = "NAME")
@@ -38,101 +46,71 @@ public class Category {
     private String slug;
 
     @Column(name = "IS_ABLE", nullable = false)
-    private boolean _isAble = true;
+    private boolean isAble = true;
 
     @OneToMany(mappedBy = "parent", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    private List<Category> _subcategories = new ArrayList<>();
+    private List<Category> subcategories;
 
     @OneToMany(mappedBy = "category")
-    private List<CatalogItem> _services = new ArrayList<>();
-
-    protected Category() {
-    }
-
-    public Category(String name, SchedulingModel schedulingModel, Category parent) {
-        this.name = toTitle(name);
-        this.slug = this.name.toLowerCase(Locale.ROOT).replace(" ", "-");
-        this._schedulingModel = schedulingModel;
-        this.parent = parent;
-
-        if (name.isBlank()) {
-            throw new FatumServiceException(FatumServiceException.BLANK);
-        }
-        if (parent != null && Objects.equals(parent.name, this.name)) {
-            throw new FatumServiceException(FatumServiceException.SELF_PARENT_CATEGORY);
-        }
-        if (parent != null && !parent._services.isEmpty()) {
-            throw new FatumServiceException(FatumServiceException.CATEGORY_HAS_SERVICES);
-        }
-        SchedulingModel inheritedSchedulingModel = parent == null ? null : parent._schedulingModel;
-        this._schedulingModel = inheritedSchedulingModel != null ? inheritedSchedulingModel : this._schedulingModel;
-        if (this._schedulingModel == null) {
-            throw new FatumServiceException(FatumServiceException.CATEGORY_WITHOUT_SCHEDULING);
-        }
-        if (parent != null) {
-            parent._subcategories.add(this);
-        }
-    }
+    private List<CatalogItem> services;
 
     public Category(String name, SchedulingModel schedulingModel) {
-        this(name, schedulingModel, null);
+        this(name, null, schedulingModel);
+
     }
 
-    public Category(String name) {
-        this(name, null, null);
+    public Category(String name, Category parent) {
+        this(name, parent, parent.schedulingModel);
     }
 
-    public Category getParent() {
-        return parent;
+    public Category(String name, Category parent, SchedulingModel schedulingModel) {
+        if(name == null || name.isBlank())
+            throw new FatumServiceException(FatumServiceException.BLANK);
+        if (parent != null && parent.name.equals(this.name))
+            throw new FatumServiceException(FatumServiceException.SELF_PARENT_CATEGORY);
+        if (parent != null && !parent.services.isEmpty())
+            throw new FatumServiceException(FatumServiceException.CATEGORY_HAS_SERVICES);
+        if (this.schedulingModel == null)
+            throw new FatumServiceException(FatumServiceException.CATEGORY_WITHOUT_SCHEDULING);
+        this.name = toTitle(name);
+        this.slug = this.name.toLowerCase(Locale.ROOT).replace(" ", "-");
+        this.schedulingModel = schedulingModel;
+        this.parent = parent;
+        this.subcategories = new ArrayList<>();
+        this.services = new ArrayList<>();
+        if (parent != null) parent.subcategories.add(this);
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public String getSlug() {
-        return slug;
-    }
-
-    public List<CatalogItem> getCatalogItems() {
-        return new ArrayList<>(_services);
-    }
-
-    public List<Category> getSubcategories() {
-        return new ArrayList<>(_subcategories);
-    }
-
-    public boolean isAble() {
-        return _isAble;
-    }
-
-    public SchedulingModel getSchedulingModel() {
-        return _schedulingModel;
+    public boolean hasServices(){
+        if(!this.services.isEmpty())
+            return true;
+        for(Category subcategory : this.subcategories){
+            if(subcategory.hasServices())
+                return true;
+        }
+        return false;
     }
 
     public void removeSubCategory(Category subcategory) {
-        this._subcategories.remove(subcategory);
+        if (subcategory.hasServices()) throw new FatumServiceException(FatumServiceException.CATEGORY_HAS_SERVICES);
+        this.subcategories.remove(subcategory);
     }
 
     public void addService(CatalogItem catalogItem) {
-        if (!_subcategories.isEmpty()) {
+        if (!subcategories.isEmpty()) {
             throw new FatumServiceException(FatumServiceException.CATEGORY_HAS_SUBCATEGORIES);
         }
-        this._services.add(catalogItem);
-    }
-
-    public void removeService(CatalogItem catalogItem) {
-        this._services.remove(catalogItem);
+        this.services.add(catalogItem);
     }
 
     public void disable() {
-        _isAble = false;
-        _subcategories.forEach(Category::disable);
+        isAble = false;
+        subcategories.forEach(Category::disable);
     }
 
     public void enable() {
-        _isAble = true;
-        _subcategories.forEach(Category::enable);
+        isAble = true;
+        subcategories.forEach(Category::enable);
     }
 
     private String toTitle(String newCategory) {
@@ -151,20 +129,5 @@ public class Category {
         return result.toString();
     }
 
-    @Override
-    public boolean equals(Object other) {
-        if (!(other instanceof Category)) {
-            return false;
-        }
-        if (this == other) {
-            return true;
-        }
-        Category category = (Category) other;
-        return Objects.equals(this.name, category.name);
-    }
 
-    @Override
-    public int hashCode() {
-        return this.name.hashCode();
-    }
 }

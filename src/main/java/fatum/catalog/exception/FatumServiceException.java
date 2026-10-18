@@ -13,6 +13,7 @@ public class FatumServiceException extends RuntimeException {
     public static final String MAX_PHOTOS_EXCEEDED = "Maximum number of photos per service exceeded";
     public static final String CATEGORY_EXISTS = "Category already exists";
     public static final String PARENT_CATEGORY_NOT_FOUND = "Parent category not found";
+    public static final String REMOVING_CATEGORY_WITH_SERVICES = "Cannot remove a category with services";
 
     public FatumServiceException(String message) {
         super(message);

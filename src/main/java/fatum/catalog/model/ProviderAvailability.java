@@ -11,11 +11,19 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import lombok.AccessLevel;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 @Entity
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Getter
 @Table(
         name = "OWNER_AVAILABILITY",
         uniqueConstraints = {
@@ -40,23 +48,25 @@ public class ProviderAvailability {
     private String id;
 
     @Column(name = "INITIAL_TIME", nullable = false)
-    private LocalTime _initialTime;
+    private LocalTime initialTime;
 
     @Column(name = "FINAL_TIME", nullable = false)
-    private LocalTime _finalTime;
+    private LocalTime finalTime;
 
-    protected ProviderAvailability() {
-    }
 
     public ProviderAvailability(String providerId, Day day, LocalTime initialTime, LocalTime finalTime) {
+        if (
+                providerId == null ||providerId.isBlank()
+                || day == null
+        )
+            throw new FatumServiceException(FatumServiceException.BLANK);
         this.providerId = providerId;
         this.day = day;
-        if (providerId.isBlank()) {
-            throw new FatumServiceException(FatumServiceException.BLANK);
-        }
+        initialTime = initialTime.withSecond(0).withNano(0);
+        finalTime = finalTime.withSecond(0).withNano(0);
         validateTimes(initialTime, finalTime);
-        _initialTime = initialTime.withSecond(0).withNano(0);
-        _finalTime = finalTime.withSecond(0).withNano(0);
+        this.initialTime = initialTime;
+        this.finalTime = finalTime;
     }
 
     public ProviderAvailability(String providerId, Day day, LocalTime initialTime) {
@@ -67,46 +77,18 @@ public class ProviderAvailability {
         this(providerId, day, LocalTime.of(0, 0), LocalTime.of(23, 59));
     }
 
-    public String getProviderId() {
-        return providerId;
+    public void changeAvailabilityToAllDay() {
+        this.initialTime = LocalTime.of(0, 0);
+        this.finalTime = LocalTime.of(23, 59);
     }
-
-    public Day getDay() {
-        return day;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    protected void setId(String id) {
-        this.id = id;
-    }
-
-    public LocalTime getInitialTime() {
-        return _initialTime;
-    }
-
-    public LocalTime getFinalTime() {
-        return _finalTime;
-    }
-
-    public long getDuration() {
-        return ChronoUnit.MINUTES.between(_initialTime, _finalTime);
-    }
-
-    public void changeSchedule() {
-        changeSchedule(_initialTime, _finalTime);
-    }
-
     public void changeSchedule(LocalTime newInitialTime) {
-        changeSchedule(newInitialTime, _finalTime);
+        changeSchedule(newInitialTime.withSecond(0).withNano(0), this.finalTime);
     }
 
     public void changeSchedule(LocalTime newInitialTime, LocalTime newFinalTime) {
         validateTimes(newInitialTime, newFinalTime);
-        _initialTime = newInitialTime.withSecond(0).withNano(0);
-        _finalTime = newFinalTime.withSecond(0).withNano(0);
+        this.initialTime = newInitialTime.withSecond(0).withNano(0);
+        this.finalTime = newFinalTime.withSecond(0).withNano(0);
     }
 
     private void validateTimes(LocalTime start, LocalTime finalTime) {
@@ -115,20 +97,4 @@ public class ProviderAvailability {
         }
     }
 
-    @Override
-    public boolean equals(Object other) {
-        if (!(other instanceof ProviderAvailability)) {
-            return false;
-        }
-        if (this == other) {
-            return true;
-        }
-        ProviderAvailability availability = (ProviderAvailability) other;
-        return Objects.equals(this.id, availability.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return this.id == null ? 0 : this.id.hashCode();
-    }
 }
