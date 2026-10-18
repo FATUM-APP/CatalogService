@@ -5,7 +5,7 @@ import fatum.catalog.model.Category
 
 
 object CategoryMapper {
-    fun toEntity(categoryRequest: CreateCategoryRequest, parent: Category): Category {
+    fun toEntity(categoryRequest: CreateCategoryRequest, parent: Category?): Category {
         return Category(
             categoryRequest.name,
             categoryRequest.schedulingModel
