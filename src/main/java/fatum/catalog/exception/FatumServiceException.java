@@ -14,6 +14,13 @@ public class FatumServiceException extends RuntimeException {
     public static final String REMOVING_CATEGORY_WITH_SERVICES = "Cannot remove a category with services";
     public static final String NEGATIVE_ESTIMATED_TIME = "Estimated time cannot be negative";
     public static final String QUESTION_WITHOUT_OPTIONS = "Question must have at least two options";
+    public static final String INVALID_IMAGE = "Invalid image";
+    public static final String IMAGE_TOO_LARGE = "Image too large";
+    public static final String INVALID_IMAGE_FORMAT = "Invalid image format";
+    public static final String TOO_MANY_IMAGES = "You have reached the maximum number of images allowed per service";
+    public static final String NO_SERVICE_IMAGES = "Service has no images";
+    public static final String UK_SERVICES_CATEGORY_PROVIDER= "Provider should have only one service per category";
+    public static final String UK_SERVICES_TITLE_PROVIDER= "Provider cannot have two services with the same title";
 
 
     public FatumServiceException(String message) {

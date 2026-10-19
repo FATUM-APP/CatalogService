@@ -3,7 +3,7 @@ package fatum.catalog.dto.mapper;
 import fatum.catalog.dto.CreateCategoryRequest;
 import fatum.catalog.model.Category;
 
-public final class CategoryMapper {
+public class CategoryMapper {
 
     private CategoryMapper() {}
 
