@@ -63,10 +63,14 @@ class ProviderAvailability(
         _finalTime
     )
 
+    fun changeAvailabilityToAllDay() {
+        _initialTime = LocalTime.of(0, 0)
+        _finalTime = LocalTime.of(23, 59)
+    }
+
     fun changeSchedule(newInitialTime: LocalTime = _initialTime,
                        newFinalTime: LocalTime = _finalTime) {
-
-       validateTimes(newInitialTime, newFinalTime)
+        validateTimes(newInitialTime, newFinalTime)
         _initialTime = newInitialTime.withSecond(0).withNano(0)
         _finalTime = newFinalTime.withSecond(0).withNano(0)
     }

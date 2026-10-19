@@ -52,7 +52,7 @@ class CatalogItem(
     @JoinColumn(name = "CATEGORY", referencedColumnName = "NAME", nullable = false)
     private val category: Category,
 
-    @OneToMany(mappedBy = "service", cascade = [CascadeType.ALL], orphanRemoval = true)
+    @OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true)
     @JoinColumn(name = "SERVICE_ID", nullable = false)
     private val _serviceCatalog: MutableList<ServiceImage> = mutableListOf(),
 
@@ -101,8 +101,8 @@ class CatalogItem(
         _title = toTitle(newTitle)
     }
 
-    fun changeDescription(newDescription: String? = null) {
-        _description = newDescription?.trim().toString()
+    fun changeDescription(newDescription: String?) {
+        _description = newDescription?.trim()
     }
 
     fun changePrice(newPrice: BigDecimal) {
@@ -120,6 +120,8 @@ class CatalogItem(
     }
 
     fun changeDefaultEstimatedTime(newDefaultEstimatedTime: Int?) {
+        if (newDefaultEstimatedTime != null && newDefaultEstimatedTime < 0)
+            throw FatumServiceException(FatumServiceException.NEGATIVE_ESTIMATED_TIME)
         _defaultEstimatedTime = newDefaultEstimatedTime
     }
     fun changeStatus(newStatus: ServiceStatus) {

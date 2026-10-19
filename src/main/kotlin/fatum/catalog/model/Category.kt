@@ -49,7 +49,14 @@ class Category(
         parent?._subcategories?.add(this)
     }
 
+    fun hasServices(): Boolean {
+        if (_services.isNotEmpty()) return true
+        return _subcategories.any { it.hasServices() }
+    }
+
     fun removeSubCategory(subcategory: Category) {
+        if (subcategory.hasServices())
+            throw FatumServiceException(FatumServiceException.REMOVING_CATEGORY_WITH_SERVICES)
         this._subcategories.remove(subcategory)
     }
 

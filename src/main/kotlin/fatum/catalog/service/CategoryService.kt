@@ -10,21 +10,45 @@ import org.springframework.transaction.annotation.Transactional
 
 @Service
 class CategoryService(
-    val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository
 ) {
+
     @Transactional
-    fun createCategory(request: CreateCategoryRequest): Category {
-        if (categoryRepository.existsById(request.name))
+    fun create(request: CreateCategoryRequest): Category {
+        if (categoryRepository.existsByNameIgnoreCase(request.name))
             throw FatumServiceException(FatumServiceException.CATEGORY_EXISTS)
 
-        // parentName es nullable — solo busca si viene
-        val parent = request.parentName?.let {
-            categoryRepository.findById(it).orElseThrow {  // findById retorna Optional
-                FatumServiceException(FatumServiceException.PARENT_CATEGORY_NOT_FOUND)
-            }
-        }
-
+        val parent = request.parentName?.let { findCategory(it) }
         val category = CategoryMapper.toEntity(request, parent)
-        return categoryRepository.save(category)  // faltaba guardar y retornar
+        return categoryRepository.save(category)
+    }
+
+    @Transactional(readOnly = true)
+    fun findCategory(name: String): Category {
+        return categoryRepository.findByNameIgnoreCase(name)
+            .orElseThrow { FatumServiceException(FatumServiceException.CATEGORY_NOT_FOUND) }
+    }
+
+    @Transactional
+    fun disableCategory(name: String): Boolean {
+        val category = findCategory(name)
+        category.disable()
+        categoryRepository.save(category)
+        return category.isAble
+    }
+
+    @Transactional
+    fun enableCategory(name: String): Boolean {
+        val category = findCategory(name)
+        category.enable()
+        categoryRepository.save(category)
+        return category.isAble
+    }
+
+    @Transactional
+    fun deleteCategory(name: String) {
+        val category = findCategory(name)
+        if (category.hasServices()) disableCategory(name)
+        else categoryRepository.delete(category)
     }
 }
