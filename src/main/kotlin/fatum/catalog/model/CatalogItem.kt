@@ -1,5 +1,6 @@
 package fatum.catalog.model
 
+import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.constant.JobType
 import fatum.catalog.model.constant.PriceType
@@ -60,7 +61,7 @@ class CatalogItem(
     @JdbcTypeCode(SqlTypes.JSON)
     private var _fixedQuestions: Set<FixedQuestion> = emptySet()
 
-    ) {
+) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID", length = 36, nullable = false, updatable = false)
@@ -70,20 +71,17 @@ class CatalogItem(
     @Column(name = "TITLE", length = 40, nullable = false)
     private var _title: String = toTitle(title)
 
-    @Column(name = "DESCRIPTION", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "DESCRIPTION", columnDefinition = "TEXT")
     private var _description: String? = description?.trim()
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STATUS", length = 12, nullable = false)
     private var _status: ServiceStatus = ServiceStatus.ACTIVE
 
-
     init {
-        if(providerId.isBlank()) throw FatumServiceException(FatumServiceException.BLANK)
-        if(_title.isBlank()) throw FatumServiceException(FatumServiceException.BLANK)
-        if(_basePrice.compareTo(BigDecimal.ZERO) < 0) throw FatumServiceException(FatumServiceException.NEGATIVE_PRICE)
+        if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        if (_basePrice < BigDecimal.ZERO) throw FatumServiceException(CatalogErrorCode.NEGATIVE_PRICE)
         category.addService(this)
-
     }
 
     val title: String get() = _title
@@ -97,43 +95,50 @@ class CatalogItem(
     val serviceCatalog: List<ServiceImage> get() = _serviceCatalog.toList()
     val fixedQuestions: Set<FixedQuestion> get() = _fixedQuestions
 
-    fun changeTitle(newTitle: String) {
+    fun setTitle(newTitle: String) {
+        if (newTitle.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
         _title = toTitle(newTitle)
     }
 
-    fun changeDescription(newDescription: String?) {
+    fun setDescription(newDescription: String?) {
         _description = newDescription?.trim()
     }
 
-    fun changePrice(newPrice: BigDecimal) {
-        if(newPrice.compareTo(BigDecimal.ZERO) < 0)
-            throw FatumServiceException(FatumServiceException.NEGATIVE_PRICE)
+    fun setPrice(newPrice: BigDecimal) {
+        if (newPrice < BigDecimal.ZERO)
+            throw FatumServiceException(CatalogErrorCode.NEGATIVE_PRICE)
         _basePrice = newPrice
     }
 
-    fun changePriceType(newPriceType: PriceType) {
+    fun setPriceType(newPriceType: PriceType) {
         _priceType = newPriceType
     }
 
-    fun changeNegotiable(newNegotiable: Boolean) {
-        _isNegotiable = newNegotiable
+    fun makeNegotiable() {
+        _isNegotiable = true
     }
 
-    fun changeDefaultEstimatedTime(newDefaultEstimatedTime: Int?) {
+    fun makeNonNegotiable() {
+        _isNegotiable = false
+    }
+
+    fun setDefaultEstimatedTime(newDefaultEstimatedTime: Int?) {
         if (newDefaultEstimatedTime != null && newDefaultEstimatedTime < 0)
-            throw FatumServiceException(FatumServiceException.NEGATIVE_ESTIMATED_TIME)
+            throw FatumServiceException(CatalogErrorCode.NEGATIVE_ESTIMATED_TIME)
         _defaultEstimatedTime = newDefaultEstimatedTime
     }
-    fun changeStatus(newStatus: ServiceStatus) {
+
+    fun setStatus(newStatus: ServiceStatus) {
         _status = newStatus
     }
 
-    fun changeJobType(newJobType: JobType) {
+    fun setJobType(newJobType: JobType) {
         _jobType = newJobType
     }
 
-    fun updateFixedQuestions(newQuestions: Set<FixedQuestion>) {
-        _fixedQuestions = newQuestions
+    fun setFixedQuestions(newQuestions: Set<FixedQuestion>?) {
+        if (newQuestions == null) clearFixedQuestions()
+        else _fixedQuestions = newQuestions
     }
 
     fun clearFixedQuestions() {
@@ -144,13 +149,11 @@ class CatalogItem(
         _serviceCatalog.add(image)
     }
 
-    fun removeImage(imageId: String): ServiceImage? {
-        val image = _serviceCatalog.find { it.id == imageId }
-        if (image != null) _serviceCatalog.remove(image)
-        return image
+    fun removeImage(image: ServiceImage) {
+        _serviceCatalog.remove(image)
     }
 
-    private fun toTitle(newTitle: String): String{
+    private fun toTitle(newTitle: String): String {
         return newTitle.trim().split(" ").joinToString(" ") { word ->
             word.lowercase().replaceFirstChar { it.uppercase() }
         }
