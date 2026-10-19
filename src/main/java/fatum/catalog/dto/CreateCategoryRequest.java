@@ -10,4 +10,9 @@ public record CreateCategoryRequest(
         String name,
         SchedulingModel schedulingModel,
         String parentName
-) {}
+) {
+        public CreateCategoryRequest {
+                name = name.trim();
+                parentName = parentName == null ? null : parentName.trim();
+        }
+}

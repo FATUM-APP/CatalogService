@@ -64,7 +64,7 @@ public class Category {
         this(name, parent,
                 parent == null ? null : parent.getSchedulingModel());  // validación inline
     }
-    public Category(String name, Category parent, SchedulingModel schedulingModel) {
+    private Category(String name, Category parent, SchedulingModel schedulingModel) {
         if(name == null || name.isBlank())
             throw new FatumServiceException(FatumServiceException.BLANK);
         if (parent != null && parent.name.equals(this.name))

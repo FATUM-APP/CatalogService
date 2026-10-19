@@ -43,6 +43,8 @@ public record CreateServiceRequest(
         Set<FixedQuestion> fixedQuestions
 ) {
     public CreateServiceRequest {
+        title = title.trim();
+        description = description == null ? null : description.trim();
         if (basePrice == null) basePrice = BigDecimal.ZERO;
         if (jobType == null) jobType = JobType.PRESENCIAL;
         if (fixedQuestions == null) fixedQuestions = Set.of();

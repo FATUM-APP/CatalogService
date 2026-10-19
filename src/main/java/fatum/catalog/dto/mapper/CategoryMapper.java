@@ -5,10 +5,12 @@ import fatum.catalog.model.Category;
 
 public final class CategoryMapper {
 
-    private CategoryMapper() {
-    }
+    private CategoryMapper() {}
 
-    public static Category toEntity(CreateCategoryRequest categoryRequest, Category parent) {
-        return new Category(categoryRequest.getName(), categoryRequest.getSchedulingModel(), null);
+    public static Category toEntity(CreateCategoryRequest request, Category parent) {
+        if (parent != null) {
+            return new Category(request.name(), parent);
+        }
+        return new Category(request.name(), request.schedulingModel());
     }
 }

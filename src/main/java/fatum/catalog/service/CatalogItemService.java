@@ -10,9 +10,7 @@ public class CatalogItemService {
 
     public CatalogItemService(CatalogItemRepository catalogItemRepository) {
         this.catalogItemRepository = catalogItemRepository;
+
     }
 
-    public CatalogItemRepository getCatalogItemRepository() {
-        return catalogItemRepository;
-    }
 }
