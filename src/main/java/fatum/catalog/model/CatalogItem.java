@@ -23,12 +23,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
+
+import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Getter
 @Table(
         name = "SERVICES",
         uniqueConstraints = {
@@ -48,225 +52,162 @@ public class CatalogItem {
     private String providerId;
 
     @Column(name = "TITLE", length = 40, nullable = false)
-    private String _title;
+    private String title;
 
-    @Column(name = "DESCRIPTION", columnDefinition = "TEXT", nullable = false)
-    private String _description;
+    @Column(name = "DESCRIPTION", columnDefinition = "TEXT")
+    private String description;
 
     @Column(name = "BASE_PRICE", nullable = false)
-    private BigDecimal _basePrice;
+    private BigDecimal basePrice;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "PRICE_TYPE", length = 12, nullable = false)
-    private PriceType _priceType;
+    private PriceType priceType;
 
     @Column(name = "IS_NEGOTIABLE", nullable = false)
-    private boolean _isNegotiable;
+    private boolean isNegotiable;
 
     @Column(name = "DEFAULT_TIME")
-    private Integer _defaultEstimatedTime;
+    private Integer defaultEstimatedTime;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "JOB_TYPE", length = 10, nullable = false)
-    private JobType _jobType;
+    private JobType jobType;
 
     @ManyToOne
     @JoinColumn(name = "CATEGORY", referencedColumnName = "NAME", nullable = false)
     private Category category;
 
-    @OneToMany(mappedBy = "service", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "SERVICE_ID", nullable = false)
-    private List<ServiceImage> _serviceCatalog = new ArrayList<>();
+    private List<ServiceImage> serviceCatalog;
 
     @Column(name = "FIXED_QUESTIONS", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
-    private Set<FixedQuestion> _fixedQuestions = Collections.emptySet();
+    private Set<FixedQuestion> fixedQuestions;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
     @Column(name = "ID", length = 36, nullable = false, updatable = false)
     private String id;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STATUS", length = 12, nullable = false)
-    private ServiceStatus _status = ServiceStatus.ACTIVE;
+    private ServiceStatus status = ServiceStatus.ACTIVE;
 
-    protected CatalogItem() {
+    public static class Builder {
+        private String providerId;
+        private String title;
+        private String description;
+        private BigDecimal basePrice;
+        private PriceType priceType;
+        private boolean isNegotiable;
+        private Integer defaultEstimatedTime;
+        private JobType jobType;
+        private Category category;
+        List<ServiceImage> serviceCatalog;
+        Set<FixedQuestion> fixedQuestions;
+
+        public Builder providerId(String providerId) { this.providerId = providerId; return this; }
+        public Builder title(String title) { this.title = title; return this; }
+        public Builder description(String description) { this.description = description; return this; }
+        public Builder basePrice(BigDecimal basePrice) { this.basePrice = basePrice; return this; }
+        public Builder priceType(PriceType priceType) { this.priceType = priceType; return this; }
+        public Builder isNegotiable(boolean isNegotiable) { this.isNegotiable = isNegotiable; return this; }
+        public Builder defaultEstimatedTime(Integer defaultEstimatedTime) {
+            this.defaultEstimatedTime = defaultEstimatedTime; return this;
+        }
+        public Builder jobType(JobType jobType) { this.jobType = jobType; return this; }
+        public Builder category(Category category) { this.category = category; return this; }
+        public Builder serviceCatalog(List<ServiceImage> serviceCatalog) {
+            this.serviceCatalog = serviceCatalog; return this;
+        }
+        public Builder fixedQuestions(Set<FixedQuestion> fixedQuestions) {
+            this.fixedQuestions = fixedQuestions; return this;
+        }
+
+        public CatalogItem build() {
+            return new CatalogItem(this);
+        }
     }
 
-    public CatalogItem(
-            String providerId,
-            String title,
-            String description,
-            BigDecimal basePrice,
-            PriceType priceType,
-            boolean isNegotiable,
-            Integer defaultEstimatedTime,
-            JobType jobType,
-            Category category,
-            List<ServiceImage> serviceCatalog,
-            Set<FixedQuestion> fixedQuestions
+    private CatalogItem(
+            Builder builder
     ) {
-        this.providerId = providerId;
-        this._title = toTitle(title);
-        this._description = description == null ? null : description.trim();
-        this._basePrice = basePrice;
-        this._priceType = priceType;
-        this._isNegotiable = isNegotiable;
-        this._defaultEstimatedTime = defaultEstimatedTime;
-        this._jobType = jobType;
-        this.category = category;
-        this._serviceCatalog = serviceCatalog;
-        this._fixedQuestions = fixedQuestions;
-
-        if (providerId.isBlank()) {
-            throw new FatumServiceException(FatumServiceException.BLANK);
-        }
-        if (_title.isBlank()) {
-            throw new FatumServiceException(FatumServiceException.BLANK);
-        }
-        if (_basePrice.compareTo(BigDecimal.ZERO) < 0) {
-            throw new FatumServiceException(FatumServiceException.NEGATIVE_PRICE);
-        }
+        if(builder.providerId == null || builder.providerId.isBlank()) throw new FatumServiceException(FatumServiceException.BLANK);
+        this.providerId = builder.providerId;
+        changeTitle(builder.title);
+        changeDescription(builder.description);
+        changePrice(builder.basePrice);
+        changePriceType(builder.priceType);
+        this.isNegotiable = builder.isNegotiable;
+        changeDefaultEstimatedTime(builder.defaultEstimatedTime);
+        changeJobType(builder.jobType);
+        this.category = builder.category;
+        this.serviceCatalog = builder.serviceCatalog == null ? new ArrayList<>() : builder.serviceCatalog;
+        updateFixedQuestions(builder.fixedQuestions);
         category.addService(this);
     }
 
-    public CatalogItem(
-            String providerId,
-            String title,
-            String description,
-            BigDecimal basePrice,
-            PriceType priceType,
-            JobType jobType,
-            Category category
-    ) {
-        this(providerId, title, description, basePrice, priceType, false, null, jobType, category,
-                new ArrayList<>(), Collections.emptySet());
-    }
-
-    public CatalogItem(
-            String providerId,
-            String title,
-            PriceType priceType,
-            JobType jobType,
-            Category category
-    ) {
-        this(providerId, title, null, BigDecimal.ZERO, priceType, false, null, jobType, category,
-                new ArrayList<>(), Collections.emptySet());
-    }
-
-    public String getProviderId() {
-        return providerId;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    protected void setId(String id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return _title;
-    }
-
-    public String getDescription() {
-        return _description;
-    }
-
-    public BigDecimal getBasePrice() {
-        return _basePrice;
-    }
-
-    public PriceType getPriceType() {
-        return _priceType;
-    }
-
-    public boolean isNegotiable() {
-        return _isNegotiable;
-    }
-
-    public Integer getDefaultEstimatedTime() {
-        return _defaultEstimatedTime;
-    }
-
-    public ServiceStatus getStatus() {
-        return _status;
-    }
-
-    public JobType getJobType() {
-        return _jobType;
-    }
-
-    public List<ServiceImage> getServiceCatalog() {
-        return new ArrayList<>(_serviceCatalog);
-    }
-
-    public Set<FixedQuestion> getFixedQuestions() {
-        return _fixedQuestions;
-    }
-
     public void changeTitle(String newTitle) {
-        _title = toTitle(newTitle);
-    }
-
-    public void changeDescription() {
-        changeDescription(null);
+        this.title = toTitle(newTitle);
     }
 
     public void changeDescription(String newDescription) {
-        _description = String.valueOf(newDescription == null ? null : newDescription.trim());
+        this.description = newDescription == null ? null : newDescription.trim();
     }
 
     public void changePrice(BigDecimal newPrice) {
-        if (newPrice.compareTo(BigDecimal.ZERO) < 0) {
+        if (newPrice == null || newPrice.compareTo(BigDecimal.ZERO) < 0)
             throw new FatumServiceException(FatumServiceException.NEGATIVE_PRICE);
-        }
-        _basePrice = newPrice;
+        this.basePrice = newPrice;
     }
 
     public void changePriceType(PriceType newPriceType) {
-        _priceType = newPriceType;
+        if(newPriceType == null) throw new FatumServiceException(FatumServiceException.BLANK);
+        this.priceType = newPriceType;
     }
 
-    public void changeNegotiable(boolean newNegotiable) {
-        _isNegotiable = newNegotiable;
+    public void makeNegotiable() {
+        this.isNegotiable = true;
+    }
+
+    public void makeNonNegotiable() {
+        this.isNegotiable = false;
     }
 
     public void changeDefaultEstimatedTime(Integer newDefaultEstimatedTime) {
-        _defaultEstimatedTime = newDefaultEstimatedTime;
+        if(newDefaultEstimatedTime != null && newDefaultEstimatedTime < 0)
+            throw new FatumServiceException(FatumServiceException.NEGATIVE_ESTIMATED_TIME);
+        this.defaultEstimatedTime = newDefaultEstimatedTime;
     }
 
     public void changeStatus(ServiceStatus newStatus) {
-        _status = newStatus;
+        if(newStatus == null) throw new FatumServiceException(FatumServiceException.BLANK);
+        this.status = newStatus;
     }
 
     public void changeJobType(JobType newJobType) {
-        _jobType = newJobType;
+        if(newJobType == null) throw new FatumServiceException(FatumServiceException.BLANK);
+        this.jobType = newJobType;
     }
 
     public void updateFixedQuestions(Set<FixedQuestion> newQuestions) {
-        _fixedQuestions = newQuestions;
+        if(newQuestions == null) clearFixedQuestions();
+        else this.fixedQuestions = newQuestions;
     }
 
     public void clearFixedQuestions() {
-        _fixedQuestions = Collections.emptySet();
+        this.fixedQuestions = Collections.emptySet();
     }
 
     public void addImage(ServiceImage image) {
-        _serviceCatalog.add(image);
+        this.serviceCatalog.add(image);
     }
 
-    public ServiceImage removeImage(String imageId) {
-        ServiceImage image = _serviceCatalog.stream()
-                .filter(it -> Objects.equals(it.getId(), imageId))
-                .findFirst()
-                .orElse(null);
-        if (image != null) {
-            _serviceCatalog.remove(image);
-        }
-        return image;
+    public void removeImage(ServiceImage image) {
+        this.serviceCatalog.remove(image);
     }
 
     private String toTitle(String newTitle) {
@@ -285,20 +226,4 @@ public class CatalogItem {
         return result.toString();
     }
 
-    @Override
-    public boolean equals(Object other) {
-        if (!(other instanceof CatalogItem)) {
-            return false;
-        }
-        if (this == other) {
-            return true;
-        }
-        CatalogItem catalogItem = (CatalogItem) other;
-        return Objects.equals(this.id, catalogItem.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return this.id == null ? 0 : this.id.hashCode();
-    }
 }

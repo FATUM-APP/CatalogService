@@ -39,6 +39,7 @@ public class Category {
     private Category parent;
 
     @Id
+    @EqualsAndHashCode.Include
     @Column(name = "NAME", length = 30, nullable = false, unique = true, updatable = false)
     private String name;
 
@@ -60,9 +61,9 @@ public class Category {
     }
 
     public Category(String name, Category parent) {
-        this(name, parent, parent.schedulingModel);
+        this(name, parent,
+                parent == null ? null : parent.getSchedulingModel());  // validación inline
     }
-
     public Category(String name, Category parent, SchedulingModel schedulingModel) {
         if(name == null || name.isBlank())
             throw new FatumServiceException(FatumServiceException.BLANK);
@@ -70,7 +71,7 @@ public class Category {
             throw new FatumServiceException(FatumServiceException.SELF_PARENT_CATEGORY);
         if (parent != null && !parent.services.isEmpty())
             throw new FatumServiceException(FatumServiceException.CATEGORY_HAS_SERVICES);
-        if (this.schedulingModel == null)
+        if (schedulingModel == null)
             throw new FatumServiceException(FatumServiceException.CATEGORY_WITHOUT_SCHEDULING);
         this.name = toTitle(name);
         this.slug = this.name.toLowerCase(Locale.ROOT).replace(" ", "-");
@@ -92,7 +93,8 @@ public class Category {
     }
 
     public void removeSubCategory(Category subcategory) {
-        if (subcategory.hasServices()) throw new FatumServiceException(FatumServiceException.CATEGORY_HAS_SERVICES);
+        if (subcategory.hasServices())
+            throw new FatumServiceException(FatumServiceException.REMOVING_CATEGORY_WITH_SERVICES);
         this.subcategories.remove(subcategory);
     }
 

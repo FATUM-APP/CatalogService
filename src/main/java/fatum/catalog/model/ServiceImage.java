@@ -21,6 +21,7 @@ import java.util.Objects;
 public class ServiceImage {
 
     @Id
+    @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "ID", length = 36, nullable = false, updatable = false)
     private String id;

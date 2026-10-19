@@ -44,6 +44,7 @@ public class ProviderAvailability {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @EqualsAndHashCode.Include
     @Column(name = "ID", length = 36, nullable = false, updatable = false)
     private String id;
 
