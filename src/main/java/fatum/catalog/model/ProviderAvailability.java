@@ -1,5 +1,6 @@
 package fatum.catalog.model;
 
+import fatum.catalog.exception.CatalogErrorCode;
 import fatum.catalog.exception.FatumServiceException;
 import fatum.catalog.model.constant.Day;
 import jakarta.persistence.Column;
@@ -17,8 +18,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
-import java.util.Objects;
 
 @Entity
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -55,46 +54,58 @@ public class ProviderAvailability {
     private LocalTime finalTime;
 
 
+    /**
+     * Constructor of Provider Availability
+     * @param providerId
+     * @param day
+     * @param initialTime
+     * @param finalTime
+     */
     public ProviderAvailability(String providerId, Day day, LocalTime initialTime, LocalTime finalTime) {
         if (
                 providerId == null ||providerId.isBlank()
                 || day == null
         )
-            throw new FatumServiceException(FatumServiceException.BLANK);
+            throw new FatumServiceException(CatalogErrorCode.BLANK);
         this.providerId = providerId;
         this.day = day;
-        initialTime = initialTime.withSecond(0).withNano(0);
-        finalTime = finalTime.withSecond(0).withNano(0);
-        validateTimes(initialTime, finalTime);
-        this.initialTime = initialTime;
-        this.finalTime = finalTime;
+        changeSchedule(initialTime,finalTime);
     }
 
+    /**
+     * Constructor that indicates just the begining of the day
+     * @param providerId
+     * @param day
+     * @param initialTime
+     */
     public ProviderAvailability(String providerId, Day day, LocalTime initialTime) {
         this(providerId, day, initialTime, LocalTime.of(23, 59));
     }
 
+    /**
+     * Full day Availablity
+     * @param providerId
+     * @param day
+     */
     public ProviderAvailability(String providerId, Day day) {
         this(providerId, day, LocalTime.of(0, 0), LocalTime.of(23, 59));
     }
 
     public void changeAvailabilityToAllDay() {
-        this.initialTime = LocalTime.of(0, 0);
-        this.finalTime = LocalTime.of(23, 59);
-    }
-    public void changeSchedule(LocalTime newInitialTime) {
-        changeSchedule(newInitialTime.withSecond(0).withNano(0), this.finalTime);
+        changeSchedule(LocalTime.of(0, 0),LocalTime.of(23, 59));
     }
 
     public void changeSchedule(LocalTime newInitialTime, LocalTime newFinalTime) {
+        if(newInitialTime == null) newInitialTime = this.initialTime;
+        if(newFinalTime == null) newFinalTime = this.finalTime;
         validateTimes(newInitialTime, newFinalTime);
-        this.initialTime = newInitialTime.withSecond(0).withNano(0);
-        this.finalTime = newFinalTime.withSecond(0).withNano(0);
+        this.initialTime = newInitialTime;
+        this.finalTime = newFinalTime;
     }
 
     private void validateTimes(LocalTime start, LocalTime finalTime) {
         if (start.isAfter(finalTime)) {
-            throw new FatumServiceException(FatumServiceException.INITIAL_AFTER_FINAL);
+            throw new FatumServiceException(CatalogErrorCode.INITIAL_AFTER_FINAL);
         }
     }
 

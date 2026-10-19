@@ -41,12 +41,11 @@ public record CreateServiceRequest(
 
         @Valid
         Set<FixedQuestion> fixedQuestions
-) {
+){
     public CreateServiceRequest {
+        category = category != null ? category.trim() : null;
         title = title.trim();
         description = description == null ? null : description.trim();
-        if (basePrice == null) basePrice = BigDecimal.ZERO;
-        if (jobType == null) jobType = JobType.PRESENCIAL;
-        if (fixedQuestions == null) fixedQuestions = Set.of();
+        providerId = providerId.trim();
     }
 }

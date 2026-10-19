@@ -1,5 +1,6 @@
 package fatum.catalog.model;
 
+import fatum.catalog.exception.CatalogErrorCode;
 import fatum.catalog.exception.FatumServiceException;
 import fatum.catalog.model.constant.JobType;
 import fatum.catalog.model.constant.PriceType;
@@ -94,7 +95,7 @@ public class CatalogItem {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STATUS", length = 12, nullable = false)
-    private ServiceStatus status = ServiceStatus.ACTIVE;
+    private ServiceStatus status;
 
     public static class Builder {
         private String providerId;
@@ -135,37 +136,42 @@ public class CatalogItem {
     private CatalogItem(
             Builder builder
     ) {
-        if(builder.providerId == null || builder.providerId.isBlank()) throw new FatumServiceException(FatumServiceException.BLANK);
+        if(builder.providerId == null || builder.providerId.isBlank())
+            throw new FatumServiceException(CatalogErrorCode.BLANK);
+        if(builder.category == null) throw new FatumServiceException(CatalogErrorCode.SERVICE_WITHOUT_CATEGORY);
         this.providerId = builder.providerId;
-        changeTitle(builder.title);
-        changeDescription(builder.description);
-        changePrice(builder.basePrice);
-        changePriceType(builder.priceType);
+        setTitle(builder.title);
+        setDescription(builder.description);
+        setPrice(builder.basePrice);
+        setPriceType(builder.priceType);
         this.isNegotiable = builder.isNegotiable;
-        changeDefaultEstimatedTime(builder.defaultEstimatedTime);
-        changeJobType(builder.jobType);
+        setDefaultEstimatedTime(builder.defaultEstimatedTime);
+        setJobType(builder.jobType);
+        this.status = ServiceStatus.ACTIVE;
         this.category = builder.category;
         this.serviceCatalog = builder.serviceCatalog == null ? new ArrayList<>() : builder.serviceCatalog;
-        updateFixedQuestions(builder.fixedQuestions);
+        setFixedQuestions(builder.fixedQuestions);
         category.addService(this);
     }
 
-    public void changeTitle(String newTitle) {
+    public void setTitle(String newTitle) {
+        if(newTitle == null || newTitle.isBlank())
+            throw new FatumServiceException(CatalogErrorCode.BLANK);
         this.title = toTitle(newTitle);
     }
 
-    public void changeDescription(String newDescription) {
+    public void setDescription(String newDescription) {
         this.description = newDescription == null ? null : newDescription.trim();
     }
 
-    public void changePrice(BigDecimal newPrice) {
+    public void setPrice(BigDecimal newPrice) {
         if (newPrice == null || newPrice.compareTo(BigDecimal.ZERO) < 0)
-            throw new FatumServiceException(FatumServiceException.NEGATIVE_PRICE);
+            throw new FatumServiceException(CatalogErrorCode.NEGATIVE_PRICE);
         this.basePrice = newPrice;
     }
 
-    public void changePriceType(PriceType newPriceType) {
-        if(newPriceType == null) throw new FatumServiceException(FatumServiceException.BLANK);
+    public void setPriceType(PriceType newPriceType) {
+        if(newPriceType == null) throw new FatumServiceException(CatalogErrorCode.BLANK);
         this.priceType = newPriceType;
     }
 
@@ -177,23 +183,23 @@ public class CatalogItem {
         this.isNegotiable = false;
     }
 
-    public void changeDefaultEstimatedTime(Integer newDefaultEstimatedTime) {
+    public void setDefaultEstimatedTime(Integer newDefaultEstimatedTime) {
         if(newDefaultEstimatedTime != null && newDefaultEstimatedTime < 0)
-            throw new FatumServiceException(FatumServiceException.NEGATIVE_ESTIMATED_TIME);
+            throw new FatumServiceException(CatalogErrorCode.NEGATIVE_ESTIMATED_TIME);
         this.defaultEstimatedTime = newDefaultEstimatedTime;
     }
 
-    public void changeStatus(ServiceStatus newStatus) {
-        if(newStatus == null) throw new FatumServiceException(FatumServiceException.BLANK);
+    public void setStatus(ServiceStatus newStatus) {
+        if(newStatus == null) throw new FatumServiceException(CatalogErrorCode.BLANK);
         this.status = newStatus;
     }
 
-    public void changeJobType(JobType newJobType) {
-        if(newJobType == null) throw new FatumServiceException(FatumServiceException.BLANK);
+    public void setJobType(JobType newJobType) {
+        if(newJobType == null) throw new FatumServiceException(CatalogErrorCode.BLANK);
         this.jobType = newJobType;
     }
 
-    public void updateFixedQuestions(Set<FixedQuestion> newQuestions) {
+    public void setFixedQuestions(Set<FixedQuestion> newQuestions) {
         if(newQuestions == null) clearFixedQuestions();
         else this.fixedQuestions = newQuestions;
     }
