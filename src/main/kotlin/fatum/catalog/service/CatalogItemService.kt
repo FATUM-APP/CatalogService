@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
+import java.math.BigDecimal
 
 @Service
 class CatalogItemService(
@@ -42,20 +43,30 @@ class CatalogItemService(
         return catalogItemRepository.save(CatalogItemMapper.toEntity(request, serviceImages, category))
     }
 
+    @Transactional(readOnly = true)
     fun findByTitle(title: String): List<CatalogItem> =
         catalogItemRepository.findByTitleIgnoreCase(title)
 
+    @Transactional(readOnly = true)
     fun findByTitleContaining(keyword: String): List<CatalogItem> =
         catalogItemRepository.findByTitleContainingIgnoreCase(keyword)
 
+    @Transactional(readOnly = true)
     fun findByTitleStartingWith(prefix: String): List<CatalogItem> =
         catalogItemRepository.findByTitleStartingWithIgnoreCase(prefix)
 
+    @Transactional(readOnly = true)
     fun searchInCatalog(keyword: String): List<CatalogItem> =
         catalogItemRepository.searchInCatalog(keyword)
 
+    @Transactional(readOnly = true)
     fun findAll(): List<CatalogItem> =
         catalogItemRepository.findAll()
+
+    @Transactional(readOnly = true)
+    fun findByPriceRange(minimum: BigDecimal, maximum: BigDecimal): List<CatalogItem>{
+
+    }
 
     private fun validateUniqueness(request: CreateServiceRequest) {
         val category = categoryService.findCategory(request.category)
