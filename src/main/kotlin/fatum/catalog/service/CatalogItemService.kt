@@ -167,8 +167,8 @@ class CatalogItemService(
     //==========================================HELPERS==============================================
     private fun getById(id : String, status : ServiceStatus? = null): CatalogItem =
         (if(status == null) catalogItemRepository.findById(id).orElse(null)
-        else catalogItemRepository.findByIdAndStatus(id,status)
-            ?: throw FatumServiceException(CatalogErrorCode.CATEGORY_HAS_SERVICES)) as CatalogItem
+        else catalogItemRepository.findByIdAndStatus(id,status))
+            ?: throw FatumServiceException(CatalogErrorCode.SERVICE_NOT_FOUND)
 
     private fun validateUniqueness(request: CreateServiceRequest) {
         if (catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase(request.category, request.providerId))
