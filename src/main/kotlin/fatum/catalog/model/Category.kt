@@ -3,6 +3,7 @@ package fatum.catalog.model
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.constant.SchedulingModel
+import fatum.catalog.model.constant.ServiceStatus
 import jakarta.persistence.*
 
 @Entity
@@ -11,7 +12,7 @@ class Category private constructor(
     name: String,
     @Enumerated(EnumType.STRING)
     @Column(name = "SCHEDULING_MODEL", length = 14, nullable = false)
-    private var _schedulingModel: SchedulingModel,
+    val schedulingModel: SchedulingModel,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PARENT_NAME", referencedColumnName = "NAME")
@@ -26,7 +27,8 @@ class Category private constructor(
     val slug: String = this.name.lowercase().replace(" ", "-")
 
     @Column(name = "IS_ABLE", nullable = false)
-    private var _isAble: Boolean = true
+    var isAble: Boolean = true
+        protected set
 
     @OneToMany(mappedBy = "parent", cascade = [CascadeType.PERSIST, CascadeType.MERGE])
     private val _subcategories: MutableSet<Category> = mutableSetOf()
@@ -34,26 +36,35 @@ class Category private constructor(
     @OneToMany(mappedBy = "category")
     private val _services: MutableSet<CatalogItem> = mutableSetOf()
 
-    val isAble: Boolean get() = _isAble
-    val schedulingModel: SchedulingModel get() = _schedulingModel
+
 
     init {
         if (name.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
         if (parent?.name == this.name)
             throw FatumServiceException(CatalogErrorCode.SELF_PARENT_CATEGORY)
-        if (parent?._services?.isNotEmpty() == true)
+        if (parent?._services?.isNotEmpty() ?: false)
             throw FatumServiceException(CatalogErrorCode.CATEGORY_HAS_SERVICES)
         parent?._subcategories?.add(this)
     }
 
+    /**
+     * Root Category constructor
+     * @param name
+     * @param schedulingModel
+     */
     constructor(name: String, schedulingModel: SchedulingModel) : this(name, schedulingModel, null)
 
+    /**
+     * Subcategory constructor
+     * @param name
+     * @param parent
+     */
     constructor(name: String, parent: Category) : this(
         name,
         parent.schedulingModel,
         parent
     ) {
-        // parent is validated non-null by the caller (CategoryMapper)
+
     }
 
     fun hasServices(): Boolean {
@@ -69,7 +80,7 @@ class Category private constructor(
         }
     }
 
-    fun getSubCategories(): Set<Category> = _subcategories.toSet()
+    fun getSubcategories(): Set<Category> = _subcategories.toSet()
 
     fun removeSubCategory(subcategory: Category) {
         if (subcategory.hasServices())
@@ -84,12 +95,17 @@ class Category private constructor(
     }
 
     fun disable() {
-        _isAble = false
+        this.isAble = false
+        _services.filter { it.status == ServiceStatus.ACTIVE }
+            .forEach { it.status = ServiceStatus.CATEGORY_DISABLED }
         _subcategories.forEach { it.disable() }
+
     }
 
     fun enable() {
-        _isAble = true
+        this.isAble = true
+        _services.filter { it.status == ServiceStatus.CATEGORY_DISABLED }
+            .forEach { it.status = ServiceStatus.ACTIVE }
         _subcategories.forEach { it.enable() }
     }
 

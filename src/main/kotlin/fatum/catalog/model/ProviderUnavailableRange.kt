@@ -34,35 +34,43 @@ class ProviderUnavailableRange(
         protected set
 
     @Column(name = "START_DATE", nullable = false)
-    private var _startDate: LocalDateTime = LocalDateTime.MIN
+    lateinit var startDate: LocalDateTime
+        protected  set
 
     @Column(name = "FINAL_DATE", nullable = false)
-    private var _finalDate: LocalDateTime = LocalDateTime.MIN
+    lateinit var finalDate: LocalDateTime
+        protected set
 
-    val startDate: LocalDateTime get() = _startDate
-    val finalDate: LocalDateTime get() = _finalDate
+
 
     init {
         if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
         changeDates(startDate, finalDate)
     }
 
-    constructor(providerId: String, startDate: LocalDateTime, finalDate: LocalDateTime)
-            : this(providerId, null, startDate, finalDate)
-
-    constructor(providerId: String, reason: String?, start: LocalDate, end: LocalDate)
-            : this(providerId, reason, start.atStartOfDay(), end.atTime(23, 59))
 
     constructor(providerId: String, start: LocalDate, end: LocalDate)
-            : this(providerId, null, start.atStartOfDay(), end.atTime(23, 59))
+            : this(providerId, null,
+        start.atStartOfDay(),
+        end.atTime(23, 59))
+
+    constructor(providerId: String, start: LocalDateTime, end: LocalDate)
+            : this(providerId, null,
+        start,
+        end.atTime(23, 59))
+
+    constructor(providerId: String, start: LocalDate, end: LocalDateTime)
+            : this(providerId, null,
+        start.atStartOfDay(),
+        end)
 
     fun changeDates(
-        newStartDate: LocalDateTime = _startDate,
-        newFinalDate: LocalDateTime = _finalDate
+        newStartDate: LocalDateTime = this.startDate,
+        newFinalDate: LocalDateTime = this.finalDate
     ) {
         validateDates(newStartDate, newFinalDate)
-        _startDate = newStartDate
-        _finalDate = newFinalDate
+        this.startDate = newStartDate
+        this.finalDate = newFinalDate
     }
 
     private fun validateDates(start: LocalDateTime, end: LocalDateTime) {

@@ -2,6 +2,7 @@ package fatum.catalog.model
 
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
+import fatum.catalog.model.ServiceImage
 import fatum.catalog.model.constant.JobType
 import fatum.catalog.model.constant.PriceType
 import fatum.catalog.model.constant.ServiceStatus
@@ -10,6 +11,7 @@ import jakarta.persistence.*
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.math.BigDecimal
+import kotlin.collections.MutableList
 
 @Entity
 @Table(
@@ -30,36 +32,35 @@ class CatalogItem(
     @Column(name = "PROVIDER_ID", length = 36, nullable = false)
     val providerId: String,
     title: String,
-    description: String? = null,
 
-    @Column(name = "BASE_PRICE", nullable = false)
-    private var _basePrice: BigDecimal = BigDecimal.ZERO,
+    @Column(name = "DESCRIPTION", columnDefinition = "TEXT")
+    var description: String? = null,
+
+    basePrice: BigDecimal = BigDecimal.ZERO,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "PRICE_TYPE", length = 12, nullable = false)
-    private var _priceType: PriceType,
+    var priceType: PriceType,
 
-    @Column(name = "IS_NEGOTIABLE", nullable = false)
-    private var _isNegotiable: Boolean = false,
+    isNegotiable: Boolean = false,
 
-    @Column(name = "DEFAULT_TIME")
-    private var _defaultEstimatedTime: Int? = null,
+    defaultEstimatedTime: Int? = null,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "JOB_TYPE", length = 10, nullable = false)
-    private var _jobType: JobType,
+    var jobType: JobType,
 
     @ManyToOne
     @JoinColumn(name = "CATEGORY", referencedColumnName = "NAME", nullable = false)
-    private val category: Category,
-
-    @OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true)
-    @JoinColumn(name = "SERVICE_ID", nullable = false)
-    private val _serviceCatalog: MutableList<ServiceImage> = mutableListOf(),
+    val category: Category,
 
     @Column(name = "FIXED_QUESTIONS", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
-    private var _fixedQuestions: Set<FixedQuestion> = emptySet()
+    var fixedQuestions: Set<FixedQuestion> = emptySet(),
+
+    @OneToMany(cascade = [CascadeType.ALL], orphanRemoval = true)
+    @JoinColumn(name = "SERVICE_ID", nullable = false)
+    var serviceCatalog: MutableList<ServiceImage> = mutableListOf()
 
 ) {
     @Id
@@ -69,88 +70,51 @@ class CatalogItem(
         protected set
 
     @Column(name = "TITLE", length = 40, nullable = false)
-    private var _title: String = toTitle(title)
+    var title: String = toTitle(title)
+    set(value) {
+        if(value.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        field = toTitle(value)
+    }
 
-    @Column(name = "DESCRIPTION", columnDefinition = "TEXT")
-    private var _description: String? = description?.trim()
+    @Column(name = "BASE_PRICE", nullable = false)
+    var basePrice: BigDecimal = basePrice
+        set(value) {
+            if (value < BigDecimal.ZERO) {
+                throw FatumServiceException(CatalogErrorCode.NEGATIVE_PRICE)
+            }
+            field = value
+        }
+
+    @Column(name = "IS_NEGOTIABLE", nullable = false)
+    var isNegotiable: Boolean = isNegotiable
+        protected set
+
+    @Column(name = "DEFAULT_TIME")
+    var defaultEstimatedTime: Int? = defaultEstimatedTime
+        set(value) {
+            if (value != null && value < 0) {
+                throw FatumServiceException(CatalogErrorCode.NEGATIVE_ESTIMATED_TIME)
+            }
+            field = value
+        }
+
 
     @Enumerated(EnumType.STRING)
     @Column(name = "STATUS", length = 12, nullable = false)
-    private var _status: ServiceStatus = ServiceStatus.ACTIVE
+    var status: ServiceStatus = ServiceStatus.ACTIVE
+
 
     init {
         if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
-        if (_basePrice < BigDecimal.ZERO) throw FatumServiceException(CatalogErrorCode.NEGATIVE_PRICE)
         category.addService(this)
     }
 
-    val title: String get() = _title
-    val description: String? get() = _description
-    val basePrice: BigDecimal get() = _basePrice
-    val priceType: PriceType get() = _priceType
-    val isNegotiable: Boolean get() = _isNegotiable
-    val defaultEstimatedTime: Int? get() = _defaultEstimatedTime
-    val status: ServiceStatus get() = _status
-    val jobType: JobType get() = _jobType
-    val serviceCatalog: List<ServiceImage> get() = _serviceCatalog.toList()
-    val fixedQuestions: Set<FixedQuestion> get() = _fixedQuestions
-
-    fun setTitle(newTitle: String) {
-        if (newTitle.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
-        _title = toTitle(newTitle)
-    }
-
-    fun setDescription(newDescription: String?) {
-        _description = newDescription?.trim()
-    }
-
-    fun setPrice(newPrice: BigDecimal) {
-        if (newPrice < BigDecimal.ZERO)
-            throw FatumServiceException(CatalogErrorCode.NEGATIVE_PRICE)
-        _basePrice = newPrice
-    }
-
-    fun setPriceType(newPriceType: PriceType) {
-        _priceType = newPriceType
-    }
-
-    fun makeNegotiable() {
-        _isNegotiable = true
+    fun makeNegotiable()  {
+        this.isNegotiable = true
     }
 
     fun makeNonNegotiable() {
-        _isNegotiable = false
-    }
-
-    fun setDefaultEstimatedTime(newDefaultEstimatedTime: Int?) {
-        if (newDefaultEstimatedTime != null && newDefaultEstimatedTime < 0)
-            throw FatumServiceException(CatalogErrorCode.NEGATIVE_ESTIMATED_TIME)
-        _defaultEstimatedTime = newDefaultEstimatedTime
-    }
-
-    fun setStatus(newStatus: ServiceStatus) {
-        _status = newStatus
-    }
-
-    fun setJobType(newJobType: JobType) {
-        _jobType = newJobType
-    }
-
-    fun setFixedQuestions(newQuestions: Set<FixedQuestion>?) {
-        if (newQuestions == null) clearFixedQuestions()
-        else _fixedQuestions = newQuestions
-    }
-
-    fun clearFixedQuestions() {
-        _fixedQuestions = emptySet()
-    }
-
-    fun addImage(image: ServiceImage) {
-        _serviceCatalog.add(image)
-    }
-
-    fun removeImage(image: ServiceImage) {
-        _serviceCatalog.remove(image)
+        this.isNegotiable = false
     }
 
     private fun toTitle(newTitle: String): String {

@@ -36,31 +36,32 @@ class ProviderAvailability(
         protected set
 
     @Column(name = "INITIAL_TIME", nullable = false)
-    private var _initialTime: LocalTime = LocalTime.MIN
+    lateinit var initialTime: LocalTime
+        protected set
 
     @Column(name = "FINAL_TIME", nullable = false)
-    private var _finalTime: LocalTime = LocalTime.MIN
+    lateinit var finalTime: LocalTime
+        protected set
 
     init {
         if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
         changeSchedule(initialTime, finalTime)
     }
 
-    val initialTime: LocalTime get() = _initialTime
-    val finalTime: LocalTime get() = _finalTime
-    val duration: Long get() = ChronoUnit.MINUTES.between(_initialTime, _finalTime)
+    val duration: Long get() = ChronoUnit.MINUTES.between(
+        this.initialTime, this.finalTime)
 
     fun changeAvailabilityToAllDay() {
         changeSchedule(LocalTime.of(0, 0), LocalTime.of(23, 59))
     }
 
     fun changeSchedule(
-        newInitialTime: LocalTime = _initialTime,
-        newFinalTime: LocalTime = _finalTime
+        newInitialTime: LocalTime = this.initialTime,
+        newFinalTime: LocalTime = this.finalTime
     ) {
         validateTimes(newInitialTime, newFinalTime)
-        _initialTime = newInitialTime
-        _finalTime = newFinalTime
+        this.initialTime = newInitialTime
+        this.finalTime = newFinalTime
     }
 
     private fun validateTimes(start: LocalTime, end: LocalTime) {

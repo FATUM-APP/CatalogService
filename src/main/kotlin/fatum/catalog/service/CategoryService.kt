@@ -1,6 +1,7 @@
 package fatum.catalog.service
 
-import fatum.catalog.dto.CreateCategoryRequest
+import fatum.catalog.dto.CreateRootCategory
+import fatum.catalog.dto.CreateSubCategory
 import fatum.catalog.dto.mapper.CategoryMapper
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
@@ -16,43 +17,60 @@ class CategoryService(
 ) {
 
     @Transactional
-    fun create(request: CreateCategoryRequest): Category {
+    fun createRoot(request: CreateRootCategory): Category {
         if (categoryRepository.existsByNameIgnoreCase(request.name))
             throw FatumServiceException(CatalogErrorCode.CATEGORY_EXISTS)
-
-        val parent = request.parentName?.let { getCategory(it) }
-        val category = CategoryMapper.toEntity(request, parent)
+        val category = CategoryMapper.toRoot(request)
         return categoryRepository.save(category)
     }
 
-    @Transactional(readOnly = true)
-    fun findCategory(name: String): Category = getCategory(name)
+    @Transactional
+    fun createSubCategory(request: CreateSubCategory): Category {
+        if (categoryRepository.existsByNameIgnoreCase(request.name))
+            throw FatumServiceException(CatalogErrorCode.CATEGORY_EXISTS)
+        val parent = getCategory(request.parent)
+        val category = CategoryMapper.toSub(request, parent)
+        return categoryRepository.save(category)
+    }
+
 
     @Transactional(readOnly = true)
-    fun getCategoryServices(category: String): Set<CatalogItem> =
-        getCategory(category).getServices()
+    fun findCategory(name: String, isAble: Boolean? = null): Category = getCategory(name, isAble)
 
     @Transactional(readOnly = true)
-    fun getSubCategories(category: String): Set<Category> =
-        getCategory(category).getSubCategories()
+    fun searchCategoryServices(category: String): Set<CatalogItem> =
+        getCategory(category, true).getServices()
 
     @Transactional(readOnly = true)
-    fun getRootCategories(): List<Category> =
-        categoryRepository.findByParentIsNull()
+    fun searchSubCategories(category: String): Set<Category> =
+        getCategory(category, true).getSubcategories()
+
+    @Transactional(readOnly = true)
+    fun searchRootCategories(isAble: Boolean? = null): List<Category> =
+        if(isAble != null) categoryRepository.findByParentIsNullAndIsAble(isAble)
+        else categoryRepository.findByParentIsNull()
+
+
+
 
     @Transactional
     fun disableCategory(name: String): Boolean {
         val category = getCategory(name)
-        category.disable()
-        categoryRepository.save(category)
+        if(category.isAble){
+            category.disable()
+            categoryRepository.save(category)
+        }
         return category.isAble
     }
 
     @Transactional
     fun enableCategory(name: String): Boolean {
         val category = getCategory(name)
-        category.enable()
-        categoryRepository.save(category)
+        if(category.parent?.isAble == false) throw FatumServiceException(CatalogErrorCode.ENABLING_SUB_WITH_ROOT_DISABLED)
+        if(!category.isAble){
+            category.enable()
+            categoryRepository.save(category)
+        }
         return category.isAble
     }
 
@@ -67,7 +85,9 @@ class CategoryService(
         }
     }
 
-    private fun getCategory(name: String): Category =
-        categoryRepository.findByNameIgnoreCase(name)
-            .orElseThrow { FatumServiceException(CatalogErrorCode.CATEGORY_NOT_FOUND) }
+    //=================================== HELPERS=====================================================
+    private fun getCategory(name: String, isAble: Boolean? = null): Category =
+        (if (isAble == null) categoryRepository.findByNameIgnoreCase(name)
+        else categoryRepository.findByNameIgnoreCaseAndIsAble(name, isAble))
+            ?: throw FatumServiceException(CatalogErrorCode.CATEGORY_NOT_FOUND)
 }

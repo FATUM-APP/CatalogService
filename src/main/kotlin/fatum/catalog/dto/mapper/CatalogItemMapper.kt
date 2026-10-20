@@ -12,14 +12,14 @@ object CatalogItemMapper {
             providerId = request.providerId,
             title = request.title,
             description = request.description,
-            _basePrice = request.basePrice,
-            _priceType = request.priceType,
-            _isNegotiable = request.isNegotiable,
-            _defaultEstimatedTime = request.defaultEstimatedTime,
-            _jobType = request.jobType,
+            basePrice = request.basePrice,
+            priceType = request.priceType,
+            isNegotiable = request.isNegotiable,
+            defaultEstimatedTime = request.defaultEstimatedTime,
+            jobType = request.jobType,
             category = category,
-            _serviceCatalog = images.toMutableList(),
-            _fixedQuestions = request.fixedQuestions
+            serviceCatalog = images,
+            fixedQuestions = request.fixedQuestions
         )
     }
 }
