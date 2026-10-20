@@ -119,8 +119,10 @@ class CatalogItemService(
         val catalogItem = getById(request.id)
         validateImages(images)
 
+        val oldImages = catalogItem.serviceCatalog.toList()
         catalogItem.serviceCatalog = transformToServiceImages(images).toMutableList()
-        deleteBucketImages(catalogItem.serviceCatalog)
+        deleteBucketImages(oldImages)
+
 
         request.title?.let {
             validateTitleUniqueness(it, catalogItem.providerId)
@@ -149,7 +151,7 @@ class CatalogItemService(
         return catalogItemRepository.save(catalogItem)
     }
     @Transactional
-    fun desactivate(catalogItemId: String){
+    fun deactivate(catalogItemId: String){
         val catalogItem = getById(catalogItemId)
         catalogItem.status = ServiceStatus.INACTIVE
         catalogItemRepository.save(catalogItem)
@@ -164,7 +166,7 @@ class CatalogItemService(
 
     //==========================================HELPERS==============================================
     private fun getById(id : String, status : ServiceStatus? = null): CatalogItem =
-        (if(status == null) catalogItemRepository.findById(id)
+        (if(status == null) catalogItemRepository.findById(id).orElse(null)
         else catalogItemRepository.findByIdAndStatus(id,status)
             ?: throw FatumServiceException(CatalogErrorCode.CATEGORY_HAS_SERVICES)) as CatalogItem
 

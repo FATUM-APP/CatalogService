@@ -10,6 +10,7 @@ import java.math.BigDecimal
 
 interface CatalogItemRepository : JpaRepository<CatalogItem, String> {
 
+
     fun existsByTitleAndProviderIdIgnoreCase(title: String, providerId: String): Boolean
     fun existsByCategoryNameAndProviderIdIgnoreCase(categoryName: String, providerId: String): Boolean
 

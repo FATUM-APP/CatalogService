@@ -18,7 +18,7 @@ object CatalogItemMapper {
             defaultEstimatedTime = request.defaultEstimatedTime,
             jobType = request.jobType,
             category = category,
-            serviceCatalog = images,
+            serviceCatalog = images.toMutableList(),
             fixedQuestions = request.fixedQuestions
         )
     }
