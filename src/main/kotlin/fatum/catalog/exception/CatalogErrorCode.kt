@@ -7,13 +7,12 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
     // Generales
     BLANK("A required value should not be blank", HttpStatus.BAD_REQUEST),
     INITIAL_AFTER_FINAL("The initial time or date cannot be after the final time", HttpStatus.BAD_REQUEST),
+    MAX_ESTIMATED_TIME("The estimated time cannot be greater than 24 hours", HttpStatus.BAD_REQUEST),
 
     // Categorías
     CATEGORY_EXISTS("Category already exists", HttpStatus.CONFLICT),
     CATEGORY_NOT_FOUND("Category not found", HttpStatus.NOT_FOUND),
     SELF_PARENT_CATEGORY("A category cannot be its own parent", HttpStatus.BAD_REQUEST),
-    SUBCATEGORY_WITHOUT_ROOT("Subcategory doesn't have root category", HttpStatus.BAD_REQUEST),
-    CATEGORY_WITHOUT_SCHEDULING("Category must have a scheduling model", HttpStatus.BAD_REQUEST),
     CATEGORY_HAS_SUBCATEGORIES("A root category cannot have services", HttpStatus.BAD_REQUEST),
     CATEGORY_HAS_SERVICES("A category with services cannot have subcategories", HttpStatus.BAD_REQUEST),
     REMOVING_CATEGORY_WITH_SERVICES("Cannot remove a category with services", HttpStatus.BAD_REQUEST),

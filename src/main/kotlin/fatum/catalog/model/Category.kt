@@ -5,7 +5,6 @@ import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.constant.SchedulingModel
 import fatum.catalog.model.constant.ServiceStatus
 import jakarta.persistence.*
-
 @Entity
 @Table(name = "CATEGORIES")
 class Category private constructor(
@@ -40,7 +39,7 @@ class Category private constructor(
 
     init {
         if (name.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
-        if (parent?.name == this.name)
+        if (this.parent == this)
             throw FatumServiceException(CatalogErrorCode.SELF_PARENT_CATEGORY)
         if (parent?._services?.isNotEmpty() ?: false)
             throw FatumServiceException(CatalogErrorCode.CATEGORY_HAS_SERVICES)
@@ -72,15 +71,16 @@ class Category private constructor(
         return _subcategories.any { it.hasServices() }
     }
 
-    fun getServices(): Set<CatalogItem> {
-        return if (_subcategories.isNotEmpty()) {
-            _subcategories.flatMapTo(mutableSetOf()) { it.getServices() }
-        } else {
-            _services.toSet()
-        }
-    }
 
-    fun getSubcategories(): Set<Category> = _subcategories.toSet()
+    val services: Set<CatalogItem> get() =
+        if(_subcategories.isNotEmpty()) _subcategories.flatMapTo(mutableSetOf()) { it.services }
+        else _services.toSet()
+
+
+
+    val subcategories: Set<Category> get() = _subcategories.toSet()
+
+
 
     fun removeSubCategory(subcategory: Category) {
         if (subcategory.hasServices())
@@ -96,16 +96,12 @@ class Category private constructor(
 
     fun disable() {
         this.isAble = false
-        _services.filter { it.status == ServiceStatus.ACTIVE }
-            .forEach { it.status = ServiceStatus.CATEGORY_DISABLED }
         _subcategories.forEach { it.disable() }
 
     }
 
     fun enable() {
         this.isAble = true
-        _services.filter { it.status == ServiceStatus.CATEGORY_DISABLED }
-            .forEach { it.status = ServiceStatus.ACTIVE }
         _subcategories.forEach { it.enable() }
     }
 

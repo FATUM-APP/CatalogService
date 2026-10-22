@@ -4,6 +4,5 @@ enum class ServiceStatus {
     ACTIVE,
     INACTIVE,
     IN_REVIEW,
-    SUSPENDED,
-    CATEGORY_DISABLED
+    SUSPENDED
 }

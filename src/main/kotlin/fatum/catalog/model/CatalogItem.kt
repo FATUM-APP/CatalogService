@@ -2,7 +2,6 @@ package fatum.catalog.model
 
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
-import fatum.catalog.model.ServiceImage
 import fatum.catalog.model.constant.JobType
 import fatum.catalog.model.constant.PriceType
 import fatum.catalog.model.constant.ServiceStatus
@@ -77,7 +76,7 @@ class CatalogItem(
     }
 
     @Column(name = "BASE_PRICE", nullable = false)
-    var basePrice: BigDecimal = basePrice
+    var basePrice: BigDecimal = BigDecimal.ZERO
         set(value) {
             if (value < BigDecimal.ZERO) {
                 throw FatumServiceException(CatalogErrorCode.NEGATIVE_PRICE)
@@ -90,10 +89,11 @@ class CatalogItem(
         protected set
 
     @Column(name = "DEFAULT_TIME")
-    var defaultEstimatedTime: Int? = defaultEstimatedTime
+    var defaultEstimatedTime: Int? = null
         set(value) {
-            if (value != null && value < 0) {
-                throw FatumServiceException(CatalogErrorCode.NEGATIVE_ESTIMATED_TIME)
+            value?.let {
+                if (it < 0) throw FatumServiceException(CatalogErrorCode.NEGATIVE_ESTIMATED_TIME)
+                if (it > 1440) throw FatumServiceException(CatalogErrorCode.MAX_ESTIMATED_TIME)
             }
             field = value
         }
@@ -106,6 +106,10 @@ class CatalogItem(
 
     init {
         if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        if(title.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        this.basePrice = basePrice
+        this.defaultEstimatedTime = defaultEstimatedTime
+
         category.addService(this)
     }
 

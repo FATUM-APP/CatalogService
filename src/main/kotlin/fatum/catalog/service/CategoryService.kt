@@ -39,11 +39,11 @@ class CategoryService(
 
     @Transactional(readOnly = true)
     fun searchCategoryServices(category: String): Set<CatalogItem> =
-        getCategory(category, true).getServices()
+        getCategory(category, true).services
 
     @Transactional(readOnly = true)
     fun searchSubCategories(category: String): Set<Category> =
-        getCategory(category, true).getSubcategories()
+        getCategory(category, true).subcategories
 
     @Transactional(readOnly = true)
     fun searchRootCategories(isAble: Boolean? = null): List<Category> =
