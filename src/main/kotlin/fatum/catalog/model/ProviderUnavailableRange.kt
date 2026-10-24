@@ -1,31 +1,27 @@
 package fatum.catalog.model
 
+import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Table
-import jakarta.persistence.UniqueConstraint
+import jakarta.persistence.*
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
 @Table(
     name = "PROVIDER_UNAVAILABLE_DATES",
-
     uniqueConstraints = [
         UniqueConstraint(
             name = "uk_unavailable_dates_provider_date",
             columnNames = ["PROVIDER_ID", "START_DATE"]
         )
-    ])
+    ]
+)
 class ProviderUnavailableRange(
     @Column(name = "PROVIDER_ID", nullable = false, length = 36)
     val providerId: String,
 
     @Column(name = "REASON")
-    private var _reason: String? = null,
+    var reason: String? = null,
 
     startDate: LocalDateTime,
     finalDate: LocalDateTime
@@ -38,34 +34,48 @@ class ProviderUnavailableRange(
         protected set
 
     @Column(name = "START_DATE", nullable = false)
-    private var _startDate: LocalDateTime
+    lateinit var startDate: LocalDateTime
+        protected  set
 
     @Column(name = "FINAL_DATE", nullable = false)
-    private var _finalDate: LocalDateTime
+    lateinit var finalDate: LocalDateTime
+        protected set
 
-    val startDate: LocalDateTime get() = _startDate
-    val finalDate: LocalDateTime get() = _finalDate
-    val reason: String? get() = _reason
+
 
     init {
-        validateDates(startDate, finalDate)
-        _startDate = startDate
-        _finalDate = finalDate
+        if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        changeDates(startDate, finalDate)
     }
 
-    fun changeDates(newStartDate: LocalDateTime = _startDate, newFinalDate: LocalDateTime = _finalDate) {
+
+    constructor(providerId: String, start: LocalDate, end: LocalDate)
+            : this(providerId, null,
+        start.atStartOfDay(),
+        end.atTime(23, 59))
+
+    constructor(providerId: String, start: LocalDateTime, end: LocalDate)
+            : this(providerId, null,
+        start,
+        end.atTime(23, 59))
+
+    constructor(providerId: String, start: LocalDate, end: LocalDateTime)
+            : this(providerId, null,
+        start.atStartOfDay(),
+        end)
+
+    fun changeDates(
+        newStartDate: LocalDateTime = this.startDate,
+        newFinalDate: LocalDateTime = this.finalDate
+    ) {
         validateDates(newStartDate, newFinalDate)
-        _startDate = newStartDate
-        _finalDate = newFinalDate
+        this.startDate = newStartDate
+        this.finalDate = newFinalDate
     }
 
-    fun changeReason(newReason: String?) {
-        _reason = newReason
-    }
-
-    private fun validateDates(start: LocalDateTime, final: LocalDateTime) {
-        if (start.isAfter(final)) {
-            throw FatumServiceException(FatumServiceException.INITIAL_AFTER_FINAL)
+    private fun validateDates(start: LocalDateTime, end: LocalDateTime) {
+        if (start.isAfter(end)) {
+            throw FatumServiceException(CatalogErrorCode.INITIAL_AFTER_FINAL)
         }
     }
 
@@ -75,8 +85,5 @@ class ProviderUnavailableRange(
         return this.id == other.id
     }
 
-
     override fun hashCode(): Int = this.id?.hashCode() ?: 0
-
-
 }

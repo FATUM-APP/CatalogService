@@ -1,16 +1,17 @@
 package fatum.catalog.model
 
+import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.constant.SchedulingModel
+import fatum.catalog.model.constant.ServiceStatus
 import jakarta.persistence.*
-
 @Entity
 @Table(name = "CATEGORIES")
-class Category(
+class Category private constructor(
     name: String,
     @Enumerated(EnumType.STRING)
     @Column(name = "SCHEDULING_MODEL", length = 14, nullable = false)
-    private var _schedulingModel: SchedulingModel? = null,
+    val schedulingModel: SchedulingModel,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PARENT_NAME", referencedColumnName = "NAME")
@@ -25,61 +26,90 @@ class Category(
     val slug: String = this.name.lowercase().replace(" ", "-")
 
     @Column(name = "IS_ABLE", nullable = false)
-    private var _isAble: Boolean = true
+    var isAble: Boolean = true
+        protected set
 
     @OneToMany(mappedBy = "parent", cascade = [CascadeType.PERSIST, CascadeType.MERGE])
-    private val _subcategories: MutableList<Category> = mutableListOf()
+    private val _subcategories: MutableSet<Category> = mutableSetOf()
 
-    @OneToMany(mappedBy = "category", cascade = [CascadeType.PERSIST, CascadeType.MERGE])
-    private val _services: MutableList<OfferedService> = mutableListOf()
+    @OneToMany(mappedBy = "category")
+    private val _services: MutableSet<CatalogItem> = mutableSetOf()
 
-    val offeredServices: List<OfferedService> get() = _services.toList()
-    val subcategories: List<Category> get() = _subcategories.toList()
-    val isAble: Boolean get() = _isAble
-    val schedulingModel: SchedulingModel? get() = _schedulingModel
+
 
     init {
-        if (name.isBlank()) throw FatumServiceException(FatumServiceException.BLANK)
-        if (parent?.name == this.name)
-            throw FatumServiceException(FatumServiceException.SELF_PARENT_CATEGORY)
-        if (this.parent?._services?.isNotEmpty() ?: false)
-            throw FatumServiceException(FatumServiceException.CATEGORY_HAS_SERVICES)
-        _schedulingModel = parent?.schedulingModel ?: _schedulingModel
-                ?: throw FatumServiceException(FatumServiceException.CATEGORY_WITHOUT_SCHEDULING)
+        if (name.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        if (this.parent == this)
+            throw FatumServiceException(CatalogErrorCode.SELF_PARENT_CATEGORY)
+        if (parent?._services?.isNotEmpty() ?: false)
+            throw FatumServiceException(CatalogErrorCode.CATEGORY_HAS_SERVICES)
         parent?._subcategories?.add(this)
     }
 
+    /**
+     * Root Category constructor
+     * @param name
+     * @param schedulingModel
+     */
+    constructor(name: String, schedulingModel: SchedulingModel) : this(name, schedulingModel, null)
+
+    /**
+     * Subcategory constructor
+     * @param name
+     * @param parent
+     */
+    constructor(name: String, parent: Category) : this(
+        name,
+        parent.schedulingModel,
+        parent
+    ) {
+
+    }
+
+    fun hasServices(): Boolean {
+        if (_services.isNotEmpty()) return true
+        return _subcategories.any { it.hasServices() }
+    }
+
+
+    val services: Set<CatalogItem> get() =
+        if(_subcategories.isNotEmpty()) _subcategories.flatMapTo(mutableSetOf()) { it.services }
+        else _services.toSet()
+
+
+
+    val subcategories: Set<Category> get() = _subcategories.toSet()
+
+
+
     fun removeSubCategory(subcategory: Category) {
-        this._subcategories.remove(subcategory)
+        if (subcategory.hasServices())
+            throw FatumServiceException(CatalogErrorCode.REMOVING_CATEGORY_WITH_SERVICES)
+        _subcategories.remove(subcategory)
     }
 
-    fun addService(offeredService: OfferedService) {
+    fun addService(catalogItem: CatalogItem) {
         if (_subcategories.isNotEmpty())
-            throw FatumServiceException(FatumServiceException.CATEGORY_HAS_SUBCATEGORIES)
-        this._services.add(offeredService)
-    }
-
-    fun removeService(offeredService: OfferedService) {
-        this._services.remove(offeredService)
+            throw FatumServiceException(CatalogErrorCode.CATEGORY_HAS_SUBCATEGORIES)
+        _services.add(catalogItem)
     }
 
     fun disable() {
-        _isAble = false
-        _subcategories.forEach { it.disable() }  // cascade down
+        this.isAble = false
+        _subcategories.forEach { it.disable() }
+
     }
 
     fun enable() {
-        _isAble = true
-        _subcategories.forEach { it.enable() }  // cascade up
+        this.isAble = true
+        _subcategories.forEach { it.enable() }
     }
 
-    private fun toTitle(newCategory: String): String{
+    private fun toTitle(newCategory: String): String {
         return newCategory.trim().split(" ").joinToString(" ") { word ->
             word.lowercase().replaceFirstChar { it.uppercase() }
         }
     }
-
-
 
     override fun equals(other: Any?): Boolean {
         if (other !is Category) return false

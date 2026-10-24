@@ -1,3 +1,20 @@
 spring:
   application:
     name: CatalogService
+  servlet:
+    multipart:
+      max-file-size: 3MB
+      max-request-size: 32MB
+
+fatum:
+  storage:
+    enabled: true
+    base-url: ${FILE_SERVICE_URL:http://localhost:8081}
+    internal-secret: ${FILE_SERVICE_SECRET:}
+    connect-timeout: 2s
+    read-timeout: 20s
+
+
+catalog:
+  images:
+    storage-route: catalog-service:photo

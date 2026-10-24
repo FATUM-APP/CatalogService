@@ -6,7 +6,7 @@ import jakarta.persistence.JoinColumn
 @Entity
 @Table(name = "SERVICE_PORTAFOLIO")
  class ServiceImage(
-    @Column(name = "IMAGE_KEY", nullable = false, length = 255)
+    @Column(name = "IMAGE_KEY", nullable = false, length = 512)
     val imageKey: String,
 
     @Column(name = "ORIGINAL_FILENAME", nullable = false, length = 255)
@@ -17,10 +17,6 @@ import jakarta.persistence.JoinColumn
 
     @Column(name = "FILE_SIZE", nullable = false)
     val fileSize: Long = 0,
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "SERVICE_ID", referencedColumnName = "ID", nullable = false)
-    val service: OfferedService,
 ) {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

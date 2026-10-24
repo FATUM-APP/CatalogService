@@ -1,19 +1,11 @@
 package fatum.catalog.model
 
+import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.constant.Day
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Table
-import jakarta.persistence.UniqueConstraint
-import java.time.LocalDateTime
-import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
+import jakarta.persistence.*
+import java.time.LocalTime
+import java.time.temporal.ChronoUnit
 
 @Entity
 @Table(
@@ -44,38 +36,39 @@ class ProviderAvailability(
         protected set
 
     @Column(name = "INITIAL_TIME", nullable = false)
-    private var _initialTime: LocalTime
+    lateinit var initialTime: LocalTime
+        protected set
 
     @Column(name = "FINAL_TIME", nullable = false)
-    private var _finalTime: LocalTime
+    lateinit var finalTime: LocalTime
+        protected set
 
     init {
-        validateTimes(initialTime, finalTime)
-        _initialTime = initialTime.withSecond(0).withNano(0)
-        _finalTime = finalTime.withSecond(0).withNano(0)
+        if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        changeSchedule(initialTime, finalTime)
     }
 
-    val initialTime: LocalTime get() = _initialTime
-    val finalTime: LocalTime get() = _finalTime
     val duration: Long get() = ChronoUnit.MINUTES.between(
-        _initialTime,
-        _finalTime
-    )
+        this.initialTime, this.finalTime)
 
-    fun changeSchedule(newInitialTime: LocalTime = _initialTime,
-                       newFinalTime: LocalTime = _finalTime) {
-
-       validateTimes(newInitialTime, newFinalTime)
-        _initialTime = newInitialTime.withSecond(0).withNano(0)
-        _finalTime = newFinalTime.withSecond(0).withNano(0)
+    fun changeAvailabilityToAllDay() {
+        changeSchedule(LocalTime.of(0, 0), LocalTime.of(23, 59))
     }
 
-    private fun validateTimes(start: LocalTime, final: LocalTime) {
-        if (start.isAfter(final)) {
-            throw FatumServiceException(FatumServiceException.INITIAL_AFTER_FINAL)
+    fun changeSchedule(
+        newInitialTime: LocalTime = this.initialTime,
+        newFinalTime: LocalTime = this.finalTime
+    ) {
+        validateTimes(newInitialTime, newFinalTime)
+        this.initialTime = newInitialTime
+        this.finalTime = newFinalTime
+    }
+
+    private fun validateTimes(start: LocalTime, end: LocalTime) {
+        if (start.isAfter(end)) {
+            throw FatumServiceException(CatalogErrorCode.INITIAL_AFTER_FINAL)
         }
     }
-
 
     override fun equals(other: Any?): Boolean {
         if (other !is ProviderAvailability) return false
@@ -83,8 +76,5 @@ class ProviderAvailability(
         return this.id == other.id
     }
 
-
     override fun hashCode(): Int = this.id?.hashCode() ?: 0
-
-
 }
