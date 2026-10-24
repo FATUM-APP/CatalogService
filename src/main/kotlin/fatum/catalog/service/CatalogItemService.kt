@@ -57,8 +57,8 @@ class CatalogItemService(
      */
     @Transactional(readOnly = true)
     fun findByTitle(title: String, serviceStatus: ServiceStatus? = ServiceStatus.ACTIVE): List<CatalogItem> =
-        if(serviceStatus == null)catalogItemRepository.findByTitleIgnoreCase(title)
-        else catalogItemRepository.findByTitleIgnoreCaseAndStatus(title, serviceStatus)
+        if(serviceStatus == null)catalogItemRepository.findByTitle(title,null,true)
+        else catalogItemRepository.findByTitle(title, serviceStatus,true)
 
     /**
      * Searches if a catalog has in its title a substring
@@ -67,7 +67,7 @@ class CatalogItemService(
      */
     @Transactional(readOnly = true)
     fun findByTitleContaining(keyword:  String, status : ServiceStatus = ServiceStatus.ACTIVE): List<CatalogItem> =
-        catalogItemRepository.searchByTitle(keyword, status)
+        catalogItemRepository.searchByTitle(keyword, status, true)
 
     /**
      * Searches if a catalog has in its title a prefix
@@ -76,12 +76,12 @@ class CatalogItemService(
      */
     @Transactional(readOnly = true)
     fun findByTitleStartingWith(prefix: String, status: ServiceStatus = ServiceStatus.ACTIVE): List<CatalogItem> =
-        catalogItemRepository.autocompleteByTitle(prefix, status)
+        catalogItemRepository.autocompleteByTitle(prefix, status, true)
 
 
     @Transactional(readOnly = true)
     fun searchInCatalog(keyword: String, status : ServiceStatus? = null): List<CatalogItem> =
-        catalogItemRepository.searchInCatalog(keyword,status)
+        catalogItemRepository.searchInCatalog(keyword,status,true)
 
     /**
      * Filter catalog items by combining optional criteria
@@ -168,7 +168,7 @@ class CatalogItemService(
     //==========================================HELPERS==============================================
     private fun getById(id : String, status : ServiceStatus? = null): CatalogItem =
         (if(status == null) catalogItemRepository.findById(id).orElse(null)
-        else catalogItemRepository.findByIdAndStatus(id,status))
+        else catalogItemRepository.findByIdFiltered(id,status,true))
             ?: throw FatumServiceException(CatalogErrorCode.SERVICE_NOT_FOUND)
 
     private fun validateUniqueness(request: CreateServiceRequest) {
@@ -195,7 +195,8 @@ class CatalogItemService(
             minPrice = minPrice,
             maxPrice = maxPrice,
             isNegotiable = isNegotiable,
-            status = status
+            status = status,
+            true
         )
 
     //==========================================IMAGES==============================================
