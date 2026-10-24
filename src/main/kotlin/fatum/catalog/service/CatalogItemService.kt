@@ -3,7 +3,8 @@ package fatum.catalog.service
 import fatum.catalog.dto.CatalogImage
 import fatum.catalog.dto.CreateServiceRequest
 import fatum.catalog.dto.UpdateServiceRequest
-import fatum.catalog.dto.mapper.CatalogItemMapper
+
+import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -39,7 +40,7 @@ class CatalogItemService(
 
         val serviceImages = transformToServiceImages(images)
         val category = categoryService.findCategory(request.category,true)
-        return catalogItemRepository.save(CatalogItemMapper.toEntity(request, serviceImages, category))
+        return catalogItemRepository.save(request.toEntity(serviceImages, category))
     }
 
 
@@ -56,7 +57,7 @@ class CatalogItemService(
      */
     @Transactional(readOnly = true)
     fun findByTitle(title: String, serviceStatus: ServiceStatus? = ServiceStatus.ACTIVE): List<CatalogItem> =
-        if(serviceStatus == null)catalogItemRepository.findByTitleIgnoreCase(title.trim())
+        if(serviceStatus == null)catalogItemRepository.findByTitleIgnoreCase(title)
         else catalogItemRepository.findByTitleIgnoreCaseAndStatus(title, serviceStatus)
 
     /**
@@ -66,7 +67,7 @@ class CatalogItemService(
      */
     @Transactional(readOnly = true)
     fun findByTitleContaining(keyword:  String, status : ServiceStatus = ServiceStatus.ACTIVE): List<CatalogItem> =
-        catalogItemRepository.searchByTitle(keyword.trim(), status)
+        catalogItemRepository.searchByTitle(keyword, status)
 
     /**
      * Searches if a catalog has in its title a prefix
@@ -75,7 +76,7 @@ class CatalogItemService(
      */
     @Transactional(readOnly = true)
     fun findByTitleStartingWith(prefix: String, status: ServiceStatus = ServiceStatus.ACTIVE): List<CatalogItem> =
-        catalogItemRepository.autocompleteByTitle(prefix.trim(), status)
+        catalogItemRepository.autocompleteByTitle(prefix, status)
 
 
     @Transactional(readOnly = true)

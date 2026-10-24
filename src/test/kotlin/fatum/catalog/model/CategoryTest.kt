@@ -42,8 +42,8 @@ class CategoryTest {
         @Test
         fun `should create category`() {
             var category = createRoot("belleZa     ")
-            assertEquals(category.name, "Belleza")
-            assertEquals(SchedulingModel.SINGLE_SESSION, category.schedulingModel)
+            assertEquals("Belleza", category.name)
+            assertEquals("belleza", category.slug)
             assertNull(category.parent)
 
             category = createRoot(name = "BarberiA y Peluqueria     ", schedulingModel = SchedulingModel.PROJECT)
@@ -120,7 +120,7 @@ class CategoryTest {
             parent.disable()
             val subcategories = parent.subcategories.
             flatMapTo(parent.subcategories as MutableSet) { it.subcategories }
-            assertEquals(subcategories.size,3)
+            assertEquals(3, subcategories.size)
             assertTrue(parent.subcategories.flatMap { it.subcategories }.all{ it.isAble == false })
         }
 
@@ -136,7 +136,7 @@ class CategoryTest {
             parent.enable()
             val subcategories = parent.subcategories.
             flatMapTo(parent.subcategories as MutableSet) { it.subcategories }
-            assertEquals(subcategories.size,3)
+            assertEquals(3, subcategories.size)
             assertTrue(parent.subcategories.flatMap { it.subcategories }.all{ it.isAble})
         }
 
@@ -190,6 +190,14 @@ class CategoryTest {
             createCatalogItem(category = parent)
             assertTrue(parent.subcategories.isEmpty())
             assertTrue(parent.hasServices())
+        }
+
+        @Test
+        fun `should add service to category`(){
+            val parent = createRoot()
+            createCatalogItem(category = parent)
+            createCatalogItem(category = parent)
+            assertEquals(2, parent.services.size)
         }
 
         @Test

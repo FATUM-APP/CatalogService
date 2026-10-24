@@ -69,7 +69,7 @@ class CatalogItem(
         protected set
 
     @Column(name = "TITLE", length = 40, nullable = false)
-    var title: String = toTitle(title)
+    var title: String = ""
     set(value) {
         if(value.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
         field = toTitle(value)
@@ -106,7 +106,7 @@ class CatalogItem(
 
     init {
         if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
-        if(title.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        this.title = title
         this.basePrice = basePrice
         this.defaultEstimatedTime = defaultEstimatedTime
 
@@ -130,8 +130,8 @@ class CatalogItem(
     override fun equals(other: Any?): Boolean {
         if (other !is CatalogItem) return false
         if (this === other) return true
-        return this.id == other.id
+        return id != null && id == other.id
     }
 
-    override fun hashCode(): Int = this.id?.hashCode() ?: 0
+    override fun hashCode(): Int = javaClass.hashCode()
 }
