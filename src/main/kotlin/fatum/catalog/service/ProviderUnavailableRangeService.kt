@@ -61,8 +61,7 @@ class ProviderUnavailableRangeService(
     fun scheduledDateInRange(providerId: String, date: LocalDateTime) =
         findProviderUnavailableRanges(providerId).any{
             unavailability ->
-            !unavailability.startDate.isBefore(date)
-                    && !unavailability.finalDate.isAfter(date)
+            !unavailability.startDate.isAfter(date) && !unavailability.finalDate.isBefore(date)
         }
 
     @Transactional
