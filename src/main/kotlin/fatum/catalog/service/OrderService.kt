@@ -78,6 +78,6 @@ class OrderService(
     }
 
     private fun timeGapPolicy(time1: LocalDateTime, time2: LocalDateTime) : Boolean{
-        return Duration.between(time1, time2).toMinutes() < gapTime
+        return Duration.between(time1, time2).abs().toMinutes() < gapTime
     }
 }

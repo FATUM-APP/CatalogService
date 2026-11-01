@@ -4,6 +4,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import java.time.DayOfWeek
 
 @Embeddable
 data class ProviderAvailabilityId(
@@ -13,5 +14,5 @@ data class ProviderAvailabilityId(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "DAY", length = 10, nullable = false)
-    val day: Day
+    val day: DayOfWeek
 )

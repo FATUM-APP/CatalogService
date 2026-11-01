@@ -73,7 +73,7 @@ class ProviderAvailabilityService(
     @Transactional(readOnly = true)
     fun providerIsAvailable(providerId: String, day: DayOfWeek, time: LocalTime): Boolean =
         getAvailability(providerId, day)?.let {
-            time.isAfter(it.initialTime) && time.isBefore(it.finalTime)
+            !time.isAfter(it.initialTime) && !time.isBefore(it.finalTime)
         } ?: false
 
 

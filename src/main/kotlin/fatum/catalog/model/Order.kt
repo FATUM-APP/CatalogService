@@ -127,7 +127,6 @@ class Order(
 
     init {
         this.negotiatedPrice = negotiatedPrice
-        this.catalogItem.addOrder(this)
     }
 
     override fun equals(other: Any?): Boolean {

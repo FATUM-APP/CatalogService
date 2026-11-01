@@ -4,8 +4,8 @@ import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.vo.QuestionAnswer
 import jakarta.validation.Valid
-import jakarta.validation.constraints.Negative
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.PositiveOrZero
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -17,7 +17,7 @@ data class BookService(
 
     val serviceId: String,
 
-    @field:Negative(message = "Price cannot be negative")
+    @field:PositiveOrZero(message = "Price cannot be negative")
     val negotiatedPrice: BigDecimal? = null,
 
     @field:Valid
