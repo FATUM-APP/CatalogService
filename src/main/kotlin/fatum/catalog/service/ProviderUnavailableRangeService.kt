@@ -40,7 +40,7 @@ class ProviderUnavailableRangeService(
         val unavailability = getUnavailability(update.id)
         val start = update.start ?: unavailability.startDate
         val end = update.end ?: unavailability.finalDate
-        validateDates(unavailability.providerId, start, end)
+        validateDates(unavailability.providerId, start, end,unavailability.id)
         unavailability.changeDates(start,end)
         unavailableRangeRepository.save(unavailability)
     }
@@ -71,16 +71,21 @@ class ProviderUnavailableRangeService(
         if (!provider.isProfessional) throw FatumServiceException(CatalogErrorCode.NOT_A_PROFESSIONAL)
     }
 
-    private fun validateDates(providerId : String, start: LocalDateTime, end: LocalDateTime) {
+    // validateDates — agregar parámetro excludeId
+    private fun validateDates(
+        providerId: String,
+        start: LocalDateTime,
+        end: LocalDateTime,
+        excludeId: String? = null
+    ) {
         val unavailability = getProviderUnavailableRanges(providerId)
         val isInRange = unavailability.any { existing ->
-            !start.isAfter(existing.finalDate) &&
+            existing.id != excludeId &&
+                    !start.isAfter(existing.finalDate) &&
                     !end.isBefore(existing.startDate)
         }
 
         if (isInRange) throw FatumServiceException(CatalogErrorCode.OVERLAPPING_RANGE)
-
-
     }
 
     private fun getUnavailability(id : String): ProviderUnavailableRange{

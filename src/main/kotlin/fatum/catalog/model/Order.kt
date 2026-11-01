@@ -3,12 +3,15 @@ package fatum.catalog.model
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.constant.ConfirmingParty
+import fatum.catalog.model.constant.OrderStatus
 import fatum.catalog.model.vo.DualConfirmation
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
 import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -109,12 +112,24 @@ class Order(
     @Column(name = "REASON", length = 500)
     var reason: String? = null
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ORDER_STATUS", nullable = false, length = 12)
+    var status: OrderStatus = OrderStatus.PENDING
+
 
     init {
         this.negotiatedPrice = negotiatedPrice
         this.estimatedTime = estimatedTime
         this.catalogItem.addOrder(this)
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is Order) return false
+        if (this === other) return true
+        return id != null && id == other.id
+    }
+
+    override fun hashCode(): Int = javaClass.hashCode()
 
 }
 

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.time.Instant
 import java.util.Base64
+import com.fasterxml.jackson.annotation.JsonProperty
 
 @Component
 class CognitoTokenProvider(
@@ -42,8 +43,11 @@ class CognitoTokenProvider(
 }
 
 data class CognitoTokenResponse(
+    @JsonProperty("access_token")
     val accessToken: String,
+    @JsonProperty("expires_in")
     val expiresIn: Long,
+    @JsonProperty("token_type")
     val tokenType: String
 )
 

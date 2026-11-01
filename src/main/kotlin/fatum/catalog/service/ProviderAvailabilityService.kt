@@ -16,7 +16,7 @@ class ProviderAvailabilityService(
     private val userServiceClient: UserServiceClient
 ) {
     @Transactional
-    fun initilize(providerId: String){
+    fun initialize(providerId: String){
         validateProfessional(providerId)
         val days = listOf(
             Day.MONDAY,
@@ -55,6 +55,7 @@ class ProviderAvailabilityService(
 
     @Transactional
     fun fullDayAvailability(providerId: String, day: Day){
+        validateProfessional(providerId)
         val availability = getAvailability(providerId, day)?.apply {
             changeAvailabilityToAllDay()
         } ?: ProviderAvailability(
