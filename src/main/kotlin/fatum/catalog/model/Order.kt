@@ -5,6 +5,7 @@ import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.OrderStatus
 import fatum.catalog.model.vo.DualConfirmation
+import fatum.catalog.model.vo.QuestionAnswer
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
@@ -19,6 +20,8 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
+import org.hibernate.annotations.JdbcTypeCode
+import org.hibernate.type.SqlTypes
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -54,6 +57,13 @@ class Order(
 
     @Column(name = "RESIDENCE", nullable = false, length = 255)
     val deliveryResidence: String,
+
+    @Column(name = "ANSWERS", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    val answers: Set<QuestionAnswer> = emptySet(),
+
+    @Column(name = "REQUIREMENTS", length = 500)
+    val requirements: String? = null
 ) {
     @Column(name = "PROVIDER_ID", length = 36, nullable = false)
     val providerId: String = catalogItem.providerId
