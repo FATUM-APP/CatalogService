@@ -36,5 +36,19 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
     TOO_MANY_IMAGES("You have reached the maximum number of images allowed per service", HttpStatus.BAD_REQUEST),
     NO_SERVICE_IMAGES("Service has no images", HttpStatus.BAD_REQUEST),
     NO_IMAGE_ID("A saved image must have an ID", HttpStatus.INTERNAL_SERVER_ERROR),
-    NO_IMAGE_URL("No URL was returned for image", HttpStatus.INTERNAL_SERVER_ERROR);
+    NO_IMAGE_URL("No URL was returned for image", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // Ordenes
+    BOOKING_TO_EARLY("Booked time is so close to now, so maybe the professional is no able to " +
+            "answer the order ", HttpStatus.BAD_REQUEST),
+    ORDER_ALREADY_PAYED("Once the order is payed can't be changed", HttpStatus.CONFLICT),
+    OVERLAPPING_RANGE("The time range is overlapping with another range", HttpStatus.BAD_REQUEST),
+
+    // Usuario
+    NOT_A_PROFESSIONAL("User is not a professional", HttpStatus.BAD_REQUEST),
+    INVALID_USER("User is not active or not verified", HttpStatus.BAD_REQUEST),
+
+    //Schedule
+    AVAILABILITY_NOT_FOUND("Availability not found", HttpStatus.NOT_FOUND),
+    UNAVAILABILITY_NOT_FOUND("Unavailable range not found", HttpStatus.NOT_FOUND),
 }

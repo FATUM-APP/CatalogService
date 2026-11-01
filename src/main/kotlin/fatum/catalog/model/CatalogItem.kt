@@ -75,7 +75,7 @@ class CatalogItem(
         field = toTitle(value)
     }
 
-    @Column(name = "BASE_PRICE", nullable = false)
+    @Column(name = "BASE_PRICE", nullable = false, precision = 10, scale = 2)
     var basePrice: BigDecimal = BigDecimal.ZERO
         set(value) {
             if (value < BigDecimal.ZERO) {
@@ -103,6 +103,9 @@ class CatalogItem(
     @Column(name = "STATUS", length = 12, nullable = false)
     var status: ServiceStatus = ServiceStatus.ACTIVE
 
+    @OneToMany(mappedBy = "catalogItem")
+    private val _orders: MutableList<Order> = mutableListOf()
+
 
     init {
         if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
@@ -111,6 +114,11 @@ class CatalogItem(
         this.defaultEstimatedTime = defaultEstimatedTime
 
         category.addService(this)
+    }
+    val orders: List<Order> get() = _orders.toList()
+
+    fun addOrder(order: Order) {
+        _orders.add(order)
     }
 
     fun makeNegotiable()  {
@@ -126,6 +134,7 @@ class CatalogItem(
             word.lowercase().replaceFirstChar { it.uppercase() }
         }
     }
+
 
     override fun equals(other: Any?): Boolean {
         if (other !is CatalogItem) return false

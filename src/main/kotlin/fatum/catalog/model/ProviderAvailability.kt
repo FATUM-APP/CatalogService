@@ -3,37 +3,26 @@ package fatum.catalog.model
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.constant.Day
+import fatum.catalog.model.vo.ProviderAvailabilityId
 import jakarta.persistence.*
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 
-@Entity
-@Table(
-    name = "OWNER_AVAILABILITY",
-    uniqueConstraints = [
-        UniqueConstraint(
-            name = "uk_availability_provider_day",
-            columnNames = ["PROVIDER_ID", "DAY"]
-        )
-    ]
-)
-class ProviderAvailability(
-    @Column(name = "PROVIDER_ID", nullable = false, length = 36)
-    val providerId: String,
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "DAY", length = 10, nullable = false)
-    val day: Day,
+@Entity
+@Table(name = "OWNER_AVAILABILITY")
+class ProviderAvailability(
+
+    @EmbeddedId
+    val id: ProviderAvailabilityId,
 
     initialTime: LocalTime = LocalTime.of(0, 0),
-
     finalTime: LocalTime = LocalTime.of(23, 59)
 ) {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ID", length = 36, nullable = false, updatable = false)
-    var id: String? = null
-        protected set
+
+    // Accesores de conveniencia para no romper el resto del código
+    val providerId: String get() = id.providerId
+    val day: Day get() = id.day
 
     @Column(name = "INITIAL_TIME", nullable = false)
     lateinit var initialTime: LocalTime
@@ -43,8 +32,15 @@ class ProviderAvailability(
     lateinit var finalTime: LocalTime
         protected set
 
+    constructor(
+        providerId: String,
+        day: Day,
+        initialTime: LocalTime = LocalTime.of(0, 0),
+        finalTime: LocalTime = LocalTime.of(23, 59)
+    ) : this(ProviderAvailabilityId(providerId, day), initialTime, finalTime)
+
     init {
-        if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
+        if (id.providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
         changeSchedule(initialTime, finalTime)
     }
 
@@ -73,8 +69,8 @@ class ProviderAvailability(
     override fun equals(other: Any?): Boolean {
         if (other !is ProviderAvailability) return false
         if (this === other) return true
-        return this.id == other.id
+        return id == other.id
     }
 
-    override fun hashCode(): Int = this.id?.hashCode() ?: 0
+    override fun hashCode(): Int = javaClass.hashCode()
 }
