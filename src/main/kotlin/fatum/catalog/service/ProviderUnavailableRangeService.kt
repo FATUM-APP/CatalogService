@@ -57,6 +57,14 @@ class ProviderUnavailableRangeService(
         return unavailableRangeRepository.findByProviderIdAndStartDateBetween(providerId, from, to)
     }
 
+    @Transactional(readOnly = true)
+    fun scheduledDateInRange(providerId: String, date: LocalDateTime) =
+        findProviderUnavailableRanges(providerId).any{
+            unavailability ->
+            unavailability.startDate.isBefore(date)
+                    && unavailability.finalDate.isAfter(date)
+        }
+
     @Transactional
     fun deleteUnavailability(id: String){
         unavailableRangeRepository.delete(getUnavailability(id))

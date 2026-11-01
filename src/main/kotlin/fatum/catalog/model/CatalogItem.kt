@@ -103,8 +103,7 @@ class CatalogItem(
     @Column(name = "STATUS", length = 12, nullable = false)
     var status: ServiceStatus = ServiceStatus.ACTIVE
 
-    @OneToMany(mappedBy = "catalogItem")
-    private val _orders: MutableList<Order> = mutableListOf()
+
 
 
     init {
@@ -114,11 +113,6 @@ class CatalogItem(
         this.defaultEstimatedTime = defaultEstimatedTime
 
         category.addService(this)
-    }
-    val orders: List<Order> get() = _orders.toList()
-
-    fun addOrder(order: Order) {
-        _orders.add(order)
     }
 
     fun makeNegotiable()  {

@@ -32,8 +32,8 @@ class Order(
     @Column(name = "CLIENT_ID", length = 36, nullable = false)
     val clientId: String,
 
-    @Column(name = "CLIENT_USERNAME", length = 15, nullable = false)
-    val clientUsername: String,
+    @Column(name = "CLIENT_NAME", length = 15, nullable = false)
+    val clientName: String,
 
     @Column(name = "BOOKING", nullable = false)
     var booking: LocalDateTime,
@@ -42,9 +42,7 @@ class Order(
     @JoinColumn(name = "SERVICE", referencedColumnName = "ID", nullable = false)
     val catalogItem: CatalogItem,
 
-    negotiatedPrice: BigDecimal = catalogItem.basePrice,
-
-    estimatedTime: Int? = catalogItem.defaultEstimatedTime,
+    negotiatedPrice: BigDecimal,
 
     @Column(name = "DELIVERY_CITY", nullable = false, length = 50)
     val deliveryCity: String,
@@ -87,7 +85,7 @@ class Order(
         }
 
     @Column(name = "ESTIMATED_TIME")
-    var estimatedTime: Int? = null
+    var estimatedTime: Int? = catalogItem.defaultEstimatedTime
     set(value) {
         if (value != null && (value < 0 || value > 1440))
             throw FatumServiceException(CatalogErrorCode.MAX_ESTIMATED_TIME)
@@ -129,7 +127,6 @@ class Order(
 
     init {
         this.negotiatedPrice = negotiatedPrice
-        this.estimatedTime = estimatedTime
         this.catalogItem.addOrder(this)
     }
 

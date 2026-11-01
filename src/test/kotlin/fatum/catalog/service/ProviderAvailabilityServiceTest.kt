@@ -6,7 +6,6 @@ import fatum.catalog.client.UserServiceClient
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.ProviderAvailability
-import fatum.catalog.model.constant.Day
 import fatum.catalog.repository.ProviderAvailabilityRepository
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach

@@ -4,10 +4,10 @@ import fatum.catalog.client.UserServiceClient
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.ProviderAvailability
-import fatum.catalog.model.constant.Day
 import fatum.catalog.repository.ProviderAvailabilityRepository
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.stereotype.Service
+import java.time.DayOfWeek
 import java.time.LocalTime
 
 @Service
@@ -19,13 +19,13 @@ class ProviderAvailabilityService(
     fun initialize(providerId: String){
         validateProfessional(providerId)
         val days = listOf(
-            Day.MONDAY,
-            Day.TUESDAY,
-            Day.WEDNESDAY,
-            Day.THURSDAY,
-            Day.FRIDAY,
-            Day.SATURDAY,
-            Day.SUNDAY
+            DayOfWeek.MONDAY,
+            DayOfWeek.TUESDAY,
+            DayOfWeek.WEDNESDAY,
+            DayOfWeek.THURSDAY,
+            DayOfWeek.FRIDAY,
+            DayOfWeek.SATURDAY,
+            DayOfWeek.SUNDAY
         )
         days.forEach {
             providerAvailabilityRepository.save(ProviderAvailability(providerId, it))
@@ -35,7 +35,7 @@ class ProviderAvailabilityService(
     @Transactional
     fun changeSchedule(
         providerId: String,
-        day: Day,
+        day: DayOfWeek,
         newInitialTime: LocalTime,
         newFinalTime: LocalTime
     ) {
@@ -54,7 +54,7 @@ class ProviderAvailabilityService(
     }
 
     @Transactional
-    fun fullDayAvailability(providerId: String, day: Day){
+    fun fullDayAvailability(providerId: String, day: DayOfWeek){
         validateProfessional(providerId)
         val availability = getAvailability(providerId, day)?.apply {
             changeAvailabilityToAllDay()
@@ -66,9 +66,17 @@ class ProviderAvailabilityService(
     }
 
     @Transactional(readOnly = true)
-    fun findAvailability(providerId: String, day: Day): ProviderAvailability =
+    fun findAvailability(providerId: String, day: DayOfWeek): ProviderAvailability =
         getAvailability(providerId, day)
             ?: throw FatumServiceException(CatalogErrorCode.AVAILABILITY_NOT_FOUND)
+
+    @Transactional(readOnly = true)
+    fun providerIsAvailable(providerId: String, day: DayOfWeek, time: LocalTime): Boolean =
+        getAvailability(providerId, day)?.let {
+            time.isAfter(it.initialTime) && time.isBefore(it.finalTime)
+        } ?: false
+
+
 
 
     @Transactional(readOnly = true)
@@ -76,7 +84,7 @@ class ProviderAvailabilityService(
         providerAvailabilityRepository.findByIdProviderId(providerId)
 
     @Transactional
-    fun deleteAvailability(providerId: String, day: Day) {
+    fun deleteAvailability(providerId: String, day: DayOfWeek) {
         providerAvailabilityRepository.delete(
             getAvailability(providerId, day)
                 ?: throw FatumServiceException(CatalogErrorCode.AVAILABILITY_NOT_FOUND)
@@ -91,7 +99,7 @@ class ProviderAvailabilityService(
         if (!provider.isProfessional) throw FatumServiceException(CatalogErrorCode.NOT_A_PROFESSIONAL)
     }
 
-    private fun getAvailability(providerId: String, day: Day): ProviderAvailability? =
+    private fun getAvailability(providerId: String, day: DayOfWeek): ProviderAvailability? =
         providerAvailabilityRepository.findByIdProviderIdAndIdDay(providerId, day)
 
 

@@ -2,7 +2,6 @@ package fatum.catalog.model
 
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
-import fatum.catalog.model.constant.Day
 import fatum.catalog.model.vo.ProviderAvailabilityId
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested

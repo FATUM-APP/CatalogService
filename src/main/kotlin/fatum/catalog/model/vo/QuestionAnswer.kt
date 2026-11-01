@@ -4,7 +4,9 @@ import fatum.catalog.model.constant.QuestionType
 
 
 data class QuestionAnswer(
-    val question: String,
-    val type: QuestionType,
+    private val _question: String,
     val answer: Set<String>
-)
+){
+    val question = _question.trim()
+
+}

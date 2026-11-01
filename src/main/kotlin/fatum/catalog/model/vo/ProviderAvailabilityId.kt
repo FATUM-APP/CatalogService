@@ -1,6 +1,5 @@
 package fatum.catalog.model.vo
 
-import fatum.catalog.model.constant.Day
 import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import jakarta.persistence.EnumType

@@ -2,9 +2,9 @@ package fatum.catalog.model
 
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
-import fatum.catalog.model.constant.Day
 import fatum.catalog.model.vo.ProviderAvailabilityId
 import jakarta.persistence.*
+import java.time.DayOfWeek
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 
@@ -22,7 +22,7 @@ class ProviderAvailability(
 
     // Accesores de conveniencia para no romper el resto del código
     val providerId: String get() = id.providerId
-    val day: Day get() = id.day
+    val day: DayOfWeek get() = id.day
 
     @Column(name = "INITIAL_TIME", nullable = false)
     lateinit var initialTime: LocalTime
@@ -34,7 +34,7 @@ class ProviderAvailability(
 
     constructor(
         providerId: String,
-        day: Day,
+        day: DayOfWeek,
         initialTime: LocalTime = LocalTime.of(0, 0),
         finalTime: LocalTime = LocalTime.of(23, 59)
     ) : this(ProviderAvailabilityId(providerId, day), initialTime, finalTime)
