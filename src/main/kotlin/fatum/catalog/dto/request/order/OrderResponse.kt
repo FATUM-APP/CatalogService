@@ -1,4 +1,4 @@
-package fatum.catalog.dto.request
+package fatum.catalog.dto.request.order
 
 import fatum.catalog.model.constant.OrderStatus
 import jakarta.validation.constraints.NotBlank

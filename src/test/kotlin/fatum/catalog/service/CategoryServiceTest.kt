@@ -168,16 +168,19 @@ class CategoryServiceTest {
 
             val corte = CatalogItem(
                 providerId = "provider-1", title = "Corte", priceType = PriceType.FIXED,
+                providerName = "Provider Test", providerUsername = "providertest",
                 jobType = JobType.PRESENCIAL, category = pelo
             )
 
             val tinte = CatalogItem(
                 providerId = "provider-2", title = "Tinte", priceType = PriceType.FIXED,
+                providerName = "Provider Test", providerUsername = "providertest",
                 jobType = JobType.PRESENCIAL, category = pelo
             ).apply { status = ServiceStatus.SUSPENDED }
 
             CatalogItem(
                 providerId = "provider-3", title = "Manicure", priceType = PriceType.FIXED,
+                providerName = "Provider Test", providerUsername = "providertest",
                 jobType = JobType.PRESENCIAL, category = unas
             )
 
@@ -194,11 +197,13 @@ class CategoryServiceTest {
             val pelo = Category("Pelo", belleza)
             val corte = CatalogItem(
                 providerId = "provider-1", title = "Corte", priceType = PriceType.FIXED,
+                providerName = "Provider Test", providerUsername = "providertest",
                 jobType = JobType.PRESENCIAL, category = pelo
             ).apply { status = ServiceStatus.SUSPENDED }
 
             val tinte = CatalogItem(
                 providerId = "provider-1", title = "Tinte", priceType = PriceType.FIXED,
+                providerName = "Provider Test", providerUsername = "providertest",
                 jobType = JobType.PRESENCIAL, category = pelo
             )
 
@@ -221,11 +226,13 @@ class CategoryServiceTest {
             val pelo = Category("Pelo", belleza)
             CatalogItem(
                 providerId = "provider-1", title = "Corte", priceType = PriceType.FIXED,
+                providerName = "Provider Test", providerUsername = "providertest",
                 jobType = JobType.PRESENCIAL, category = pelo
             ).apply { status = ServiceStatus.SUSPENDED }
 
             CatalogItem(
                 providerId = "provider-1", title = "Tinte", priceType = PriceType.FIXED,
+                providerName = "Provider Test", providerUsername = "providertest",
                 jobType = JobType.PRESENCIAL, category = pelo
             )
 
@@ -410,6 +417,7 @@ class CategoryServiceTest {
         fun `should disable category with services instead of deleting`() {
             CatalogItem(
                 providerId = "provider-123", title = "Corte", priceType = PriceType.FIXED,
+                providerName = "Provider Test", providerUsername = "providertest",
                 jobType = JobType.PRESENCIAL, category = belleza
             )
             whenever(repository.findByNameIgnoreCase("Belleza")).thenReturn(belleza)

@@ -33,12 +33,14 @@ class ProviderAvailabilityServiceTest {
 
     private val validUser = M2User(
         userId = "provider-123",
+        name = "Juan Provider",
+        userName = "juanpro",
         birthDate = LocalDate.of(1990, 1, 1),
         isProfessional = true,
         isVerified = true,
         isActive = true,
         gender = "M",
-        principalAddress = AddressDTO("Calle 1", "Casa", "Bogota", "Cundinamarca", "Colombia", "juanpro")
+        principalAddress = AddressDTO("Calle 1", "Casa", "Bogota", "Cundinamarca", "Colombia")
     )
 
     private val nonProfessionalUser = validUser.copy(isProfessional = false)

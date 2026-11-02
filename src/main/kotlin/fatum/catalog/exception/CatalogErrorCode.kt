@@ -19,7 +19,7 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
     ENABLING_SUB_WITH_ROOT_DISABLED("Cannot enable a subcategory with root category disabled", HttpStatus.CONFLICT),
 
     // Servicios
-    SERVICE_WITHOUT_CATEGORY("Service must have a category", HttpStatus.BAD_REQUEST),
+    SERVICE_STATUS_CANT_BE_CHANGED("Service status cannot be changed", HttpStatus.BAD_REQUEST),
     SERVICE_NOT_FOUND("Item not found", HttpStatus.NOT_FOUND),
     UK_SERVICES_CATEGORY_PROVIDER("Provider should have only one service per category", HttpStatus.CONFLICT),
     UK_SERVICES_TITLE_PROVIDER("Provider cannot have two services with the same title", HttpStatus.CONFLICT),

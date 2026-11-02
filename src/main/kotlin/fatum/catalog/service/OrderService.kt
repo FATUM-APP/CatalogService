@@ -1,8 +1,8 @@
 package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.request.BookService
-import fatum.catalog.dto.request.OrderResponse
+import fatum.catalog.dto.request.order.BookService
+import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
@@ -14,7 +14,6 @@ import fatum.catalog.model.constant.ServiceStatus
 import fatum.catalog.model.vo.DualConfirmation
 import fatum.catalog.model.vo.QuestionAnswer
 import fatum.catalog.repository.OrderRepository
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration

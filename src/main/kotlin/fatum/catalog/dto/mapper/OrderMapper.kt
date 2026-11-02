@@ -1,7 +1,7 @@
 package fatum.catalog.dto.mapper
 
 import fatum.catalog.client.M2User
-import fatum.catalog.dto.request.BookService
+import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Order
 

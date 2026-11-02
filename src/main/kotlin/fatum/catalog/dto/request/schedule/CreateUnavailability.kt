@@ -1,12 +1,12 @@
-package fatum.catalog.dto.request
+package fatum.catalog.dto.request.schedule
 
 import jakarta.validation.constraints.NotBlank
-import java.time.LocalDate
+import java.time.LocalDateTime
 
-data class CreateFullUnavailability(
+data class CreateUnavailability(
     @field:NotBlank(message = "Provider id is required")
     val providerId: String,
     val reason: String? = null,
-    val start: LocalDate,
-    val end : LocalDate
+    val start: LocalDateTime,
+    val end : LocalDateTime
 )

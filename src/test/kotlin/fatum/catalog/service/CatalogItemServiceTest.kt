@@ -1,7 +1,10 @@
 package fatum.catalog.service
 
-import fatum.catalog.dto.request.CreateServiceRequest
-import fatum.catalog.dto.request.UpdateServiceRequest
+import fatum.catalog.client.AddressDTO
+import fatum.catalog.client.M2User
+import fatum.catalog.client.UserServiceClient
+import fatum.catalog.dto.request.item.CreateServiceRequest
+import fatum.catalog.dto.request.item.UpdateServiceRequest
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
@@ -31,6 +34,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.web.multipart.MultipartFile
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
@@ -39,13 +43,14 @@ class CatalogItemServiceTest {
     @Mock lateinit var catalogItemRepository: CatalogItemRepository
     @Mock lateinit var categoryService: CategoryService
     @Mock lateinit var fileStorageClient: FileStorageClient
+    @Mock lateinit var userServiceClient: UserServiceClient
 
     private lateinit var service: CatalogItemService
     private lateinit var category: Category
 
     @BeforeEach
     fun setUp() {
-        service = CatalogItemService(catalogItemRepository, categoryService, fileStorageClient, "test-route")
+        service = CatalogItemService(catalogItemRepository, categoryService, fileStorageClient, "test-route", userServiceClient)
         category = Category("Plomeria", SchedulingModel.SINGLE_SESSION)
     }
 
@@ -57,7 +62,16 @@ class CatalogItemServiceTest {
         cat: Category = this.category
     ) = CatalogItem(
         providerId = providerId, title = title,
+        providerName = "Provider Test",
+        providerUsername = "providertest",
         priceType = priceType, jobType = jobType, category = cat
+    )
+
+    private fun validProvider(userId: String = "provider-123") = M2User(
+        userId = userId, name = "Provider Test", userName = "providertest",
+        birthDate = LocalDate.of(1990, 1, 1),
+        isProfessional = true, isVerified = true, isActive = true, gender = "M",
+        principalAddress = AddressDTO("Calle 123", "Casa", "Bogota", "Cundinamarca", "Colombia")
     )
 
     private fun validImage(): MultipartFile {
@@ -128,8 +142,9 @@ class CatalogItemServiceTest {
                 category = "Plomeria"
             )
             val category = Category("Plomeria", SchedulingModel.SINGLE_SESSION)
+            val provider = validProvider(userId = "provider-1")
 
-            val entity = request.toEntity(emptyList(), category)
+            val entity = request.toEntity(emptyList(), category, provider)
 
             assertAll(
                 { assertEquals("provider-1", entity.providerId) },
@@ -153,7 +168,9 @@ class CatalogItemServiceTest {
                 providerId = "provider-123", title = "Mi Servicio",
                 priceType = PriceType.FIXED, category = "Plomeria"
             )
+            val provider = validProvider()
 
+            whenever(userServiceClient.getUserById("provider-123")).thenReturn(provider)
             whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
                 .thenReturn(false)
             whenever(catalogItemRepository.existsByTitleAndProviderIdIgnoreCase("Mi Servicio", "provider-123"))
@@ -182,6 +199,8 @@ class CatalogItemServiceTest {
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
 
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
+
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, emptyList())
             }
@@ -196,6 +215,8 @@ class CatalogItemServiceTest {
             val request = CreateServiceRequest(
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
+
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
 
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, images)
@@ -213,6 +234,8 @@ class CatalogItemServiceTest {
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
 
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
+
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, listOf(image))
             }
@@ -229,6 +252,8 @@ class CatalogItemServiceTest {
             val request = CreateServiceRequest(
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
+
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
 
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, listOf(image))
@@ -248,6 +273,8 @@ class CatalogItemServiceTest {
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
 
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
+
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, listOf(image))
             }
@@ -266,6 +293,8 @@ class CatalogItemServiceTest {
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
 
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
+
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, listOf(image))
             }
@@ -281,6 +310,7 @@ class CatalogItemServiceTest {
                 priceType = PriceType.FIXED, category = "Plomeria"
             )
 
+            whenever(userServiceClient.getUserById("provider-123")).thenReturn(validProvider())
             whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
                 .thenReturn(true)
 
@@ -300,6 +330,7 @@ class CatalogItemServiceTest {
                 priceType = PriceType.FIXED, category = "Plomeria"
             )
 
+            whenever(userServiceClient.getUserById("provider-123")).thenReturn(validProvider())
             whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
                 .thenReturn(false)
             whenever(catalogItemRepository.existsByTitleAndProviderIdIgnoreCase("Mi Servicio", "provider-123"))

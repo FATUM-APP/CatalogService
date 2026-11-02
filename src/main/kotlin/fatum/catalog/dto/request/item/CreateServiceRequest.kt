@@ -1,35 +1,41 @@
-package fatum.catalog.dto.request
+package fatum.catalog.dto.request.item
 
 import fatum.catalog.model.constant.JobType
 import fatum.catalog.model.constant.PriceType
 import fatum.catalog.model.vo.FixedQuestion
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Pattern
+import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.PositiveOrZero
 import jakarta.validation.constraints.Size
 import java.math.BigDecimal
 
-data class UpdateServiceRequest(
+data class CreateServiceRequest(
     @field:NotBlank(message = "Provider id is required")
     @field:Size(max = 36, message = "Provider id must not exceed 36 characters")
-    private val _id: String,
-    @field:Pattern(regexp = "\\S.*", message = "Title cannot be empty")
+    val providerId: String,
+
+    @field:NotBlank(message = "Title is required")
     @field:Size(max = 40, message = "Title must not exceed 40 characters")
-    private val _title: String? = null,
+    val title: String,
+
     @field:Size(max = 1000, message = "Description must not exceed 1000 characters")
-    private val _description: String? = null,
+    val description: String? = null,
+
     @field:PositiveOrZero(message = "Base price cannot be negative")
-    val basePrice: BigDecimal? = null,
-    val priceType: PriceType? = null,
-    val isNegotiable: Boolean? = null,
+    val basePrice: BigDecimal = BigDecimal.ZERO,
+
+    @field:NotNull(message = "Price type is required")
+    val priceType: PriceType,
+    val isNegotiable: Boolean = false,
     @field:PositiveOrZero(message = "Default estimated time cannot be negative")
     val defaultEstimatedTime: Int? = null,
-    val jobType: JobType? = null,
+
+    val jobType: JobType = JobType.PRESENCIAL,
+
+    @field:NotBlank(message = "Category is required")
+    @field:Size(max = 30, message = "Category must not exceed 30 characters")
+    val category: String,
     @field:Valid
     val fixedQuestions: Set<FixedQuestion> = emptySet()
-){
-    val id = _id.trim()
-    val title = _title?.trim()
-    val description = _description?.trim()
-}
+    )

@@ -3,8 +3,8 @@ package fatum.catalog.service
 import fatum.catalog.client.AddressDTO
 import fatum.catalog.client.M2User
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.request.BookService
-import fatum.catalog.dto.request.OrderResponse
+import fatum.catalog.dto.request.order.BookService
+import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -54,12 +54,14 @@ class OrderServiceTest {
 
     private val validUser = M2User(
         userId = "client-456",
+        name = "Juan Perez",
+        userName = "juanperez",
         birthDate = LocalDate.of(1990, 1, 1),
         isProfessional = false,
         isVerified = true,
         isActive = true,
         gender = "M",
-        principalAddress = AddressDTO("Calle 123 #45-67", "Casa", "Bogota", "Cundinamarca", "Colombia", "juanperez")
+        principalAddress = AddressDTO("Calle 123 #45-67", "Casa", "Bogota", "Cundinamarca", "Colombia")
     )
 
     private val invalidUser = validUser.copy(isActive = false)
@@ -70,6 +72,8 @@ class OrderServiceTest {
         catalogItem = CatalogItem(
             providerId = "provider-123",
             title = "Reparacion De Tuberias",
+            providerName = "Provider Test",
+            providerUsername = "providertest",
             priceType = PriceType.FIXED,
             jobType = JobType.PRESENCIAL,
             category = category,
@@ -81,7 +85,8 @@ class OrderServiceTest {
 
     private fun createOrder(
         clientId: String = "client-456",
-        clientName: String = "juanperez",
+        clientName: String = "Juan Perez",
+        clientUsername: String = "juanperez",
         booking: LocalDateTime = LocalDateTime.of(2027, 6, 15, 10, 0),
         item: CatalogItem = catalogItem,
         negotiatedPrice: BigDecimal = item.basePrice
@@ -89,6 +94,7 @@ class OrderServiceTest {
         val order = Order(
             clientId = clientId,
             clientName = clientName,
+            clientUsername = clientUsername,
             booking = booking,
             catalogItem = item,
             negotiatedPrice = negotiatedPrice,
@@ -159,7 +165,8 @@ class OrderServiceTest {
 
             assertAll(
                 { assertEquals("client-456", saved.clientId) },
-                { assertEquals("juanperez", saved.clientName) },
+                { assertEquals("Juan Perez", saved.clientName) },
+                { assertEquals("juanperez", saved.clientUsername) },
                 { assertEquals("provider-123", saved.providerId) },
                 { assertEquals(BigDecimal(100), saved.negotiatedPrice) },
                 { assertEquals(OrderStatus.PENDING, saved.status) }
@@ -192,6 +199,8 @@ class OrderServiceTest {
             val itemWithQuestions = CatalogItem(
                 providerId = "provider-123",
                 title = "Servicio Con Preguntas",
+                providerName = "Provider Test",
+                providerUsername = "providertest",
                 priceType = PriceType.FIXED,
                 jobType = JobType.PRESENCIAL,
                 category = category,
@@ -242,6 +251,8 @@ class OrderServiceTest {
             val itemWithQuestions = CatalogItem(
                 providerId = "provider-123",
                 title = "Servicio Con Preguntas",
+                providerName = "Provider Test",
+                providerUsername = "providertest",
                 priceType = PriceType.FIXED,
                 jobType = JobType.PRESENCIAL,
                 category = category,
