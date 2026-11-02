@@ -83,10 +83,9 @@ class CatalogItemController(
         @RequestParam(required = false, defaultValue = "0") minPrice: BigDecimal?,
         @RequestParam(required = false) maxPrice: BigDecimal?,
         @RequestParam(required = false) isNegotiable: Boolean?,
-        @RequestParam(required = false, defaultValue = "ACTIVE") status: ServiceStatus?
     ): ResponseEntity<List<ItemResponse>> =
         ResponseEntity.status(HttpStatus.OK).body(
-            catalogItemService.filterCatalog(priceType, minPrice, maxPrice, isNegotiable, status).map { it.toDto() }
+            catalogItemService.filterCatalog(priceType, minPrice, maxPrice, isNegotiable, ServiceStatus.ACTIVE).map { it.toDto() }
         )
 
     @GetMapping("/all")

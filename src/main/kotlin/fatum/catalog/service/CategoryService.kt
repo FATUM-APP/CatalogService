@@ -55,8 +55,6 @@ class CategoryService(
         else categoryRepository.findByParentIsNull()
 
 
-
-
     @Transactional
     fun disableCategory(name: String): Boolean {
         val category = getCategory(name)
