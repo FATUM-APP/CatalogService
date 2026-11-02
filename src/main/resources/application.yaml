@@ -6,7 +6,14 @@ spring:
       max-file-size: 3MB
       max-request-size: 32MB
 
+cognito:
+  token-url: ${TOKEN_URL:https://us-east-19qukvptss.auth.us-east-1.amazoncognito.com/oauth2/token}
+  client-id: ${COGNITO_M2M_CLIENT_ID}
+  client-secret: ${COGNITO_M2M_CLIENT_SECRET}
+  scope: api.catalog/read
+
 fatum:
+  base-url: ${BASE_URL:https://btx2xtbb3a.execute-api.us-east-1.amazonaws.com}
   storage:
     enabled: true
     base-url: ${FILE_SERVICE_URL:http://localhost:8081}

@@ -75,7 +75,7 @@ class CatalogItem(
         field = toTitle(value)
     }
 
-    @Column(name = "BASE_PRICE", nullable = false)
+    @Column(name = "BASE_PRICE", nullable = false, precision = 10, scale = 2)
     var basePrice: BigDecimal = BigDecimal.ZERO
         set(value) {
             if (value < BigDecimal.ZERO) {
@@ -104,6 +104,8 @@ class CatalogItem(
     var status: ServiceStatus = ServiceStatus.ACTIVE
 
 
+
+
     init {
         if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
         this.title = title
@@ -126,6 +128,7 @@ class CatalogItem(
             word.lowercase().replaceFirstChar { it.uppercase() }
         }
     }
+
 
     override fun equals(other: Any?): Boolean {
         if (other !is CatalogItem) return false

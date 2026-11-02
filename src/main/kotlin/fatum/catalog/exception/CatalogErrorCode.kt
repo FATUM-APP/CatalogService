@@ -20,7 +20,7 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
 
     // Servicios
     SERVICE_WITHOUT_CATEGORY("Service must have a category", HttpStatus.BAD_REQUEST),
-   SERVICE_NOT_FOUND("Item not found", HttpStatus.NOT_FOUND),
+    SERVICE_NOT_FOUND("Item not found", HttpStatus.NOT_FOUND),
     UK_SERVICES_CATEGORY_PROVIDER("Provider should have only one service per category", HttpStatus.CONFLICT),
     UK_SERVICES_TITLE_PROVIDER("Provider cannot have two services with the same title", HttpStatus.CONFLICT),
     NEGATIVE_PRICE("Price cannot be negative", HttpStatus.BAD_REQUEST),
@@ -31,10 +31,34 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
 
     // Imágenes
     INVALID_IMAGE("Invalid image", HttpStatus.BAD_REQUEST),
-    IMAGE_TOO_LARGE("Image too large", HttpStatus.PAYLOAD_TOO_LARGE),
+    IMAGE_TOO_LARGE("Image too large", HttpStatus.BAD_REQUEST),
     INVALID_IMAGE_FORMAT("Invalid image format", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     TOO_MANY_IMAGES("You have reached the maximum number of images allowed per service", HttpStatus.BAD_REQUEST),
     NO_SERVICE_IMAGES("Service has no images", HttpStatus.BAD_REQUEST),
     NO_IMAGE_ID("A saved image must have an ID", HttpStatus.INTERNAL_SERVER_ERROR),
-    NO_IMAGE_URL("No URL was returned for image", HttpStatus.INTERNAL_SERVER_ERROR);
+    NO_IMAGE_URL("No URL was returned for image", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // Ordenes
+    PROVIDER_UNAVAILABLE("Provider is not available at the requested time", HttpStatus.BAD_REQUEST),
+    ORDER_NOT_FOUND("Order not found", HttpStatus.NOT_FOUND),
+    OVERLAPPING_RANGE("The time range is overlapping with another range", HttpStatus.BAD_REQUEST),
+    DUPLICATE_ANSWER("A question can only be answered once", HttpStatus.BAD_REQUEST),
+    INVALID_RESPONSE("Invalid response", HttpStatus.BAD_REQUEST),
+    FORBIDDEN("User can't realize this action", HttpStatus.FORBIDDEN),
+    DELIVERING_NOT_CONFIRMED("Delivering has not been confirmed", HttpStatus.BAD_REQUEST),
+    COMPLETION_NOT_CONFIRMED("Completion has not been confirmed", HttpStatus.BAD_REQUEST),
+    ORDER_NOT_CONFIRMED("Order has not been confirmed", HttpStatus.BAD_REQUEST),
+    INVALID_STATUS_TRANSITION("Invalid status transition", HttpStatus.BAD_REQUEST),
+    REASON_REQUIRED("A reason is required for this status change", HttpStatus.BAD_REQUEST),
+    ALREADY_RESPONDED("Party has already responded to this confirmation", HttpStatus.CONFLICT),
+    MISSING_ANSWERS("All required questions must be answered", HttpStatus.BAD_REQUEST),
+    ACCEPTED_ORDERS_EXIST("There are accepted orders in the requested unavailability range", HttpStatus.CONFLICT),
+
+    // Usuario
+    NOT_A_PROFESSIONAL("User is not a professional", HttpStatus.BAD_REQUEST),
+    INVALID_USER("User is not active or not verified", HttpStatus.BAD_REQUEST),
+
+    //Schedule
+    AVAILABILITY_NOT_FOUND("Availability not found", HttpStatus.NOT_FOUND),
+    UNAVAILABILITY_NOT_FOUND("Unavailable range not found", HttpStatus.NOT_FOUND),
 }
