@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.multipart.MultipartFile
@@ -95,7 +96,7 @@ class CatalogItemController(
         )
     }
 
-    @GetMapping("{id}/images")
+    @GetMapping("/{id}/images")
     fun seeCatalogImages(
         @PathVariable id: String,
     ): ResponseEntity<List<CatalogImage>> {
@@ -113,14 +114,14 @@ class CatalogItemController(
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 
-    @PutMapping("/desactivate")
-    fun desactivateItem(request : ActivateCatalogItem) : ResponseEntity<Void> {
+    @PutMapping("/deactivate")
+    fun desactivateItem(@RequestBody request : ActivateCatalogItem) : ResponseEntity<Void> {
         catalogItemService.deactivate(request)
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 
     @PutMapping("/avtivate")
-    fun activateItem(request : ActivateCatalogItem) : ResponseEntity<Void> {
+    fun activateItem(@RequestBody request : ActivateCatalogItem) : ResponseEntity<Void> {
         catalogItemService.activate(request)
         return ResponseEntity.status(HttpStatus.OK).build()
     }

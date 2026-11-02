@@ -15,6 +15,5 @@ data class ItemResponse(
     val defaultEstimatedTime: Int?,
     val jobType: String,
     val category: String,
-    @field:Valid
     val fixedQuestions : Set<FixedQuestion>
 )

@@ -13,7 +13,7 @@ fun CreateServiceRequest.toEntity(
     category: Category,
     provider: M2User
 ): CatalogItem =
-    return CatalogItem(
+    CatalogItem(
         providerId = provider.userId,
         providerName = provider.name,
         providerUsername = provider.userName,
