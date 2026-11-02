@@ -5,9 +5,9 @@ import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.vo.QuestionAnswer
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.PositiveOrZero
 import jakarta.validation.constraints.Size
-import org.jetbrains.annotations.NotNull
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
@@ -30,17 +30,15 @@ data class BookService(
     val answers: Set<QuestionAnswer>,
 
     val requirements: String? = null
-){
+) {
     init {
         val questionFrequencies = answers
             .groupingBy { it.question.trim().lowercase() }
             .eachCount()
 
-
         val hasDuplicates = questionFrequencies.any { it.value > 1 }
 
         if (hasDuplicates)
             throw FatumServiceException(CatalogErrorCode.DUPLICATE_ANSWER)
-
     }
 }

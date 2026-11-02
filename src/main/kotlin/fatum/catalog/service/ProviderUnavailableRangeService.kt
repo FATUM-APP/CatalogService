@@ -13,17 +13,21 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.YearMonth
 import java.time.LocalDateTime
+import fatum.catalog.model.constant.OrderStatus
+import fatum.catalog.repository.OrderRepository
 
 @Service
 class ProviderUnavailableRangeService(
     private val userServiceClient: UserServiceClient,
-    private val unavailableRangeRepository: UnavailableRangeRepository
+    private val unavailableRangeRepository: UnavailableRangeRepository,
+    private val orderRepository: OrderRepository
 ) {
     @Transactional
     fun establishUnavailability(request : CreateUnavailability){
         val unavailability = request.toEntity()
         validateProfessional(unavailability.providerId)
         validateDates(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
+        handleOrdersInRange(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         unavailableRangeRepository.save(unavailability)
     }
 
@@ -32,6 +36,7 @@ class ProviderUnavailableRangeService(
         val unavailability = request.toEntity()
         validateProfessional(unavailability.providerId)
         validateDates(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
+        handleOrdersInRange(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         unavailableRangeRepository.save(unavailability)
     }
 
@@ -104,5 +109,19 @@ class ProviderUnavailableRangeService(
 
     private fun getProviderUnavailableRanges(providerId: String): List<ProviderUnavailableRange> =
         unavailableRangeRepository.findByProviderId(providerId)
+
+    private fun handleOrdersInRange(providerId: String, start: LocalDateTime, end: LocalDateTime) {
+        val acceptedOrders = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            providerId, OrderStatus.ACCEPTED, start, end
+        )
+        if (acceptedOrders.isNotEmpty())
+            throw FatumServiceException(CatalogErrorCode.ACCEPTED_ORDERS_EXIST)
+
+        val pendingOrders = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            providerId, OrderStatus.PENDING, start, end
+        )
+        pendingOrders.forEach { it.changeStatus(OrderStatus.REJECTED, "Provider marked as unavailable") }
+        orderRepository.saveAll(pendingOrders)
+    }
 
 }

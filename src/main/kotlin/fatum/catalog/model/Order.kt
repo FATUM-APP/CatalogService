@@ -19,7 +19,6 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
-import jakarta.persistence.UniqueConstraint
 import org.hibernate.annotations.JdbcTypeCode
 import org.hibernate.type.SqlTypes
 import java.math.BigDecimal
@@ -72,7 +71,6 @@ class Order(
     var id: String? = null
         protected set
 
-
     @Column(name = "CREATED_AT", nullable = false)
     val createdAt: LocalDateTime = LocalDateTime.now()
 
@@ -86,15 +84,14 @@ class Order(
 
     @Column(name = "ESTIMATED_TIME")
     var estimatedTime: Int? = catalogItem.defaultEstimatedTime
-    set(value) {
-        if (value != null && (value < 0 || value > 1440))
-            throw FatumServiceException(CatalogErrorCode.MAX_ESTIMATED_TIME)
-        field = value
-    }
+        set(value) {
+            if (value != null && (value < 0 || value > 1440))
+                throw FatumServiceException(CatalogErrorCode.MAX_ESTIMATED_TIME)
+            field = value
+        }
 
     @Column(name = "DELIVERY_STARTED_AT")
     var deliveryStartedAt: LocalDateTime? = null
-
 
     @Embedded
     @AttributeOverrides(
@@ -121,13 +118,24 @@ class Order(
     var reason: String? = null
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "ORDER_STATUS", nullable = false, length = 12)
+    @Column(name = "ORDER_STATUS", nullable = false, length = 15)
     var status: OrderStatus = OrderStatus.PENDING
-
-
+        protected set
 
     init {
         this.negotiatedPrice = negotiatedPrice
+    }
+
+    fun changeStatus(newStatus: OrderStatus, reason: String? = null) {
+        if (newStatus !in validTransitions[this.status].orEmpty())
+            throw FatumServiceException(CatalogErrorCode.INVALID_STATUS_TRANSITION)
+
+        val requiresReason = newStatus !in NO_REASON_REQUIRED
+        if (requiresReason && reason.isNullOrBlank())
+            throw FatumServiceException(CatalogErrorCode.REASON_REQUIRED)
+
+        this.status = newStatus
+        this.reason = reason
     }
 
     override fun equals(other: Any?): Boolean {
@@ -138,5 +146,21 @@ class Order(
 
     override fun hashCode(): Int = javaClass.hashCode()
 
-}
+    companion object {
+        private val NO_REASON_REQUIRED = setOf(
+            OrderStatus.PENDING,
+            OrderStatus.ACCEPTED,
+            OrderStatus.REJECTED,
+            OrderStatus.DELIVERING,
+            OrderStatus.COMPLETED
+        )
 
+        private val validTransitions = mapOf(
+            OrderStatus.PENDING to setOf(OrderStatus.ACCEPTED, OrderStatus.REJECTED, OrderStatus.CANCELLED),
+            OrderStatus.ACCEPTED to setOf(OrderStatus.DELIVERING, OrderStatus.CANCELLED, OrderStatus.DISPUTED),
+            OrderStatus.DELIVERING to setOf(OrderStatus.COMPLETED, OrderStatus.NOT_DELIVERED, OrderStatus.CANCELLED, OrderStatus.DISPUTED),
+            OrderStatus.COMPLETED to setOf(OrderStatus.DISPUTED),
+            OrderStatus.DISPUTED to setOf(OrderStatus.SOLVED, OrderStatus.REFUNDED)
+        )
+    }
+}
