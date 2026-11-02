@@ -14,6 +14,7 @@ import fatum.catalog.model.constant.ServiceStatus
 import fatum.catalog.model.vo.DualConfirmation
 import fatum.catalog.model.vo.QuestionAnswer
 import fatum.catalog.repository.OrderRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -25,7 +26,8 @@ class OrderService(
     private val orderRepository: OrderRepository,
     private val providerAvailabilityService: ProviderAvailabilityService,
     private val providerUnavailableRangeService: ProviderUnavailableRangeService,
-    private val catalogItemService: CatalogItemService
+    private val catalogItemService: CatalogItemService,
+    private val eventPublisher: ApplicationEventPublisher
 ) {
     private val gapTime: Int = 30
 
@@ -65,6 +67,8 @@ class OrderService(
         order.changeStatus(response.status, response.reason)
         order.estimatedTime = response.estimatedTime
         orderRepository.save(order)
+
+
     }
 
     //==========================================CANCEL============================================================
@@ -199,6 +203,13 @@ class OrderService(
         if (status != null) orderRepository.findByClientIdAndStatus(clientId, status)
         else orderRepository.findByClientId(clientId)
 
+    @Transactional(readOnly = true)
+    fun findActiveOrders(
+        providerId: String,
+        start: LocalDateTime,
+        end: LocalDateTime
+    ) : List<Order> = getActiveOrders(providerId, start, end)
+
     //==========================================HELPERS============================================================
 
     private fun getService(serviceId: String) = catalogItemService.findById(serviceId, ServiceStatus.ACTIVE)
@@ -241,5 +252,20 @@ class OrderService(
 
     private fun timeGapPolicy(time1: LocalDateTime, time2: LocalDateTime): Boolean {
         return Duration.between(time1, time2).abs().toMinutes() < gapTime
+    }
+
+    private fun getActiveOrders(
+        providerId: String,
+        start: LocalDateTime,
+        end: LocalDateTime
+    ): List<Order> {
+
+        val accepted = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            providerId, OrderStatus.ACCEPTED, start, end
+        )
+        val delivering = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            providerId, OrderStatus.DELIVERING, start, end
+        )
+        return accepted + delivering
     }
 }
