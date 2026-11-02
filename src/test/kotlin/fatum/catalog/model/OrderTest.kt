@@ -58,6 +58,13 @@ class OrderTest {
         requirements = requirements
     )
 
+    private fun setStatus(order: Order, status: OrderStatus) {
+        Order::class.java.getDeclaredField("status").apply {
+            isAccessible = true
+            set(order, status)
+        }
+    }
+
     @Nested
     inner class Creation {
 
@@ -172,6 +179,229 @@ class OrderTest {
     }
 
     @Nested
+    inner class ChangeStatus {
+
+        @Test
+        fun `should transition from PENDING to ACCEPTED`() {
+            val order = createOrder()
+            order.changeStatus(OrderStatus.ACCEPTED)
+            assertEquals(OrderStatus.ACCEPTED, order.status)
+        }
+
+        @Test
+        fun `should transition from PENDING to REJECTED`() {
+            val order = createOrder()
+            order.changeStatus(OrderStatus.REJECTED)
+            assertEquals(OrderStatus.REJECTED, order.status)
+        }
+
+        @Test
+        fun `should transition from PENDING to CANCELLED with reason`() {
+            val order = createOrder()
+            order.changeStatus(OrderStatus.CANCELLED, "Cliente no disponible")
+
+            assertAll(
+                { assertEquals(OrderStatus.CANCELLED, order.status) },
+                { assertEquals("Cliente no disponible", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should transition from ACCEPTED to DELIVERING`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            order.changeStatus(OrderStatus.DELIVERING)
+            assertEquals(OrderStatus.DELIVERING, order.status)
+        }
+
+        @Test
+        fun `should transition from ACCEPTED to CANCELLED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            order.changeStatus(OrderStatus.CANCELLED, "Proveedor cancelo")
+            assertEquals(OrderStatus.CANCELLED, order.status)
+        }
+
+        @Test
+        fun `should transition from ACCEPTED to DISPUTED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            order.changeStatus(OrderStatus.DISPUTED, "Problema con el servicio")
+            assertEquals(OrderStatus.DISPUTED, order.status)
+        }
+
+        @Test
+        fun `should transition from DELIVERING to COMPLETED`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            order.changeStatus(OrderStatus.COMPLETED)
+            assertEquals(OrderStatus.COMPLETED, order.status)
+        }
+
+        @Test
+        fun `should transition from DELIVERING to NOT_DELIVERED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            order.changeStatus(OrderStatus.NOT_DELIVERED, "No se encontro al cliente")
+            assertAll(
+                { assertEquals(OrderStatus.NOT_DELIVERED, order.status) },
+                { assertEquals("No se encontro al cliente", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should transition from DELIVERING to CANCELLED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            order.changeStatus(OrderStatus.CANCELLED, "Emergencia")
+            assertEquals(OrderStatus.CANCELLED, order.status)
+        }
+
+        @Test
+        fun `should transition from DELIVERING to DISPUTED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            order.changeStatus(OrderStatus.DISPUTED, "Servicio incompleto")
+            assertEquals(OrderStatus.DISPUTED, order.status)
+        }
+
+        @Test
+        fun `should transition from COMPLETED to DISPUTED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.COMPLETED)
+
+            order.changeStatus(OrderStatus.DISPUTED, "Cobro incorrecto")
+            assertEquals(OrderStatus.DISPUTED, order.status)
+        }
+
+        @Test
+        fun `should transition from DISPUTED to SOLVED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DISPUTED)
+
+            order.changeStatus(OrderStatus.SOLVED, "Se llego a un acuerdo")
+            assertEquals(OrderStatus.SOLVED, order.status)
+        }
+
+        @Test
+        fun `should transition from DISPUTED to REFUNDED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DISPUTED)
+
+            order.changeStatus(OrderStatus.REFUNDED, "Reembolso aprobado")
+            assertEquals(OrderStatus.REFUNDED, order.status)
+        }
+
+        @Test
+        fun `should throw INVALID_STATUS_TRANSITION for PENDING to DELIVERING`() {
+            val order = createOrder()
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.DELIVERING)
+            }
+            assertEquals(CatalogErrorCode.INVALID_STATUS_TRANSITION, ex.errorCode)
+        }
+
+        @Test
+        fun `should throw INVALID_STATUS_TRANSITION for COMPLETED to CANCELLED`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.COMPLETED)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.CANCELLED, "No se puede")
+            }
+            assertEquals(CatalogErrorCode.INVALID_STATUS_TRANSITION, ex.errorCode)
+        }
+
+        @Test
+        fun `should throw INVALID_STATUS_TRANSITION from terminal states`() {
+            val terminalStates = listOf(
+                OrderStatus.REJECTED, OrderStatus.NOT_DELIVERED,
+                OrderStatus.CANCELLED, OrderStatus.SOLVED, OrderStatus.REFUNDED
+            )
+
+            terminalStates.forEach { terminal ->
+                val order = createOrder()
+                setStatus(order, terminal)
+
+                val ex = assertThrows<FatumServiceException> {
+                    order.changeStatus(OrderStatus.PENDING, "reason")
+                }
+                assertEquals(CatalogErrorCode.INVALID_STATUS_TRANSITION, ex.errorCode)
+            }
+        }
+
+        @Test
+        fun `should throw REASON_REQUIRED when reason is null for CANCELLED`() {
+            val order = createOrder()
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.CANCELLED)
+            }
+            assertEquals(CatalogErrorCode.REASON_REQUIRED, ex.errorCode)
+        }
+
+        @Test
+        fun `should throw REASON_REQUIRED when reason is blank for DISPUTED`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.DISPUTED, "   ")
+            }
+            assertEquals(CatalogErrorCode.REASON_REQUIRED, ex.errorCode)
+        }
+
+        @Test
+        fun `should throw REASON_REQUIRED for NOT_DELIVERED without reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.NOT_DELIVERED)
+            }
+            assertEquals(CatalogErrorCode.REASON_REQUIRED, ex.errorCode)
+        }
+
+        @Test
+        fun `should throw REASON_REQUIRED for SOLVED without reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DISPUTED)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.SOLVED)
+            }
+            assertEquals(CatalogErrorCode.REASON_REQUIRED, ex.errorCode)
+        }
+
+        @Test
+        fun `should allow optional reason for status that does not require it`() {
+            val order = createOrder()
+            order.changeStatus(OrderStatus.ACCEPTED, "Aceptada con gusto")
+
+            assertAll(
+                { assertEquals(OrderStatus.ACCEPTED, order.status) },
+                { assertEquals("Aceptada con gusto", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should set reason to null when not provided`() {
+            val order = createOrder()
+            order.changeStatus(OrderStatus.ACCEPTED)
+
+            assertNull(order.reason)
+        }
+    }
+
+    @Nested
     inner class DualConfirmations {
 
         @Test
@@ -182,6 +412,20 @@ class OrderTest {
                 { assertFalse(order.startConfirmation.isConfirmed) },
                 { assertFalse(order.completionConfirmation.isConfirmed) },
                 { assertFalse(order.paymentConfirmation.isConfirmed) }
+            )
+        }
+
+        @Test
+        fun `should initialize all confirmations as not responded`() {
+            val order = createOrder()
+
+            assertAll(
+                { assertFalse(order.startConfirmation.hasResponded(ConfirmingParty.CUSTOMER)) },
+                { assertFalse(order.startConfirmation.hasResponded(ConfirmingParty.PROVIDER)) },
+                { assertFalse(order.completionConfirmation.hasResponded(ConfirmingParty.CUSTOMER)) },
+                { assertFalse(order.completionConfirmation.hasResponded(ConfirmingParty.PROVIDER)) },
+                { assertFalse(order.paymentConfirmation.hasResponded(ConfirmingParty.CUSTOMER)) },
+                { assertFalse(order.paymentConfirmation.hasResponded(ConfirmingParty.PROVIDER)) }
             )
         }
 
@@ -211,6 +455,28 @@ class OrderTest {
             order.paymentConfirmation.confirm(ConfirmingParty.CUSTOMER)
             order.paymentConfirmation.confirm(ConfirmingParty.PROVIDER)
             assertTrue(order.paymentConfirmation.isConfirmed)
+        }
+
+        @Test
+        fun `should detect contradiction when one confirms and other denies`() {
+            val order = createOrder()
+            order.startConfirmation.confirm(ConfirmingParty.CUSTOMER)
+            order.startConfirmation.deny(ConfirmingParty.PROVIDER)
+
+            assertTrue(order.startConfirmation.isContradicted)
+        }
+
+        @Test
+        fun `should detect both denied`() {
+            val order = createOrder()
+            order.completionConfirmation.deny(ConfirmingParty.CUSTOMER)
+            order.completionConfirmation.deny(ConfirmingParty.PROVIDER)
+
+            assertAll(
+                { assertTrue(order.completionConfirmation.isBothDenied) },
+                { assertFalse(order.completionConfirmation.isContradicted) },
+                { assertFalse(order.completionConfirmation.isConfirmed) }
+            )
         }
     }
 
