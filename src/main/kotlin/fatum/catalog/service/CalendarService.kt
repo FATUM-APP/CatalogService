@@ -27,7 +27,7 @@ class CalendarService(
         val endDateTime = endDate.atTime(23, 59)
 
         val availabilities = providerAvailabilityService.findAvailabilityByProvider(providerId)
-        val unavailableRanges = unavailableRangeService.findByProviderId(providerId)
+        val unavailableRanges = unavailableRangeService.findProviderUnavailableRanges(providerId)
         val activeOrders = orderService.findActiveOrders(providerId, startDateTime, endDateTime)
 
         return generateSequence(startDate) { it.plusDays(1) }

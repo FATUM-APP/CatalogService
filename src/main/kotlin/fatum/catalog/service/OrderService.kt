@@ -27,7 +27,6 @@ class OrderService(
     private val providerAvailabilityService: ProviderAvailabilityService,
     private val providerUnavailableRangeService: ProviderUnavailableRangeService,
     private val catalogItemService: CatalogItemService,
-    private val eventPublisher: ApplicationEventPublisher
 ) {
     private val gapTime: Int = 30
 

@@ -69,8 +69,7 @@ class ProviderUnavailableRangeService(
             !unavailability.startDate.isAfter(date) && !unavailability.finalDate.isBefore(date)
         }
 
-    @Transactional(readOnly = true)
-    fun findByProviderId(providerId: String) = getByProviderId(providerId)
+
 
     @Transactional
     fun deleteUnavailability(id: String){
@@ -127,7 +126,6 @@ class ProviderUnavailableRangeService(
         orderRepository.saveAll(pendingOrders)
     }
 
-    private fun getByProviderId(providerId: String) =
-        unavailableRangeRepository.findByProviderId(providerId)
+
 
 }
