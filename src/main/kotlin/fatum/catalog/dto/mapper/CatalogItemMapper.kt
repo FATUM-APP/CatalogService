@@ -1,14 +1,21 @@
 package fatum.catalog.dto.mapper
 
-import fatum.catalog.dto.CreateServiceRequest
+import fatum.catalog.client.M2User
+import fatum.catalog.dto.request.CreateServiceRequest
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Category
 import fatum.catalog.model.ServiceImage
 
 
-fun CreateServiceRequest.toEntity(images: List<ServiceImage>, category: Category): CatalogItem {
+fun CreateServiceRequest.toEntity(
+    images: List<ServiceImage>,
+    category: Category,
+    provider: M2User
+): CatalogItem {
     return CatalogItem(
-        providerId = providerId.trim(),
+        providerId = provider.userId,
+        providerName = provider.name,
+        providerUsername = provider.userName,
         title = title.trim(),
         description = description?.trim(),
         basePrice = basePrice,

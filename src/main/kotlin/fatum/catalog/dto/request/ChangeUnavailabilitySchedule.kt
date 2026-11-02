@@ -1,4 +1,4 @@
-package fatum.catalog.dto
+package fatum.catalog.dto.request
 
 import java.time.LocalDateTime
 

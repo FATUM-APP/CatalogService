@@ -3,9 +3,9 @@ package fatum.catalog.service
 import fatum.catalog.client.AddressDTO
 import fatum.catalog.client.M2User
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.ChangeUnavailabilitySchedule
-import fatum.catalog.dto.CreateFullUnavailability
-import fatum.catalog.dto.CreateUnavailability
+import fatum.catalog.dto.request.ChangeUnavailabilitySchedule
+import fatum.catalog.dto.request.CreateFullUnavailability
+import fatum.catalog.dto.request.CreateUnavailability
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem

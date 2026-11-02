@@ -1,8 +1,8 @@
 package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.BookService
-import fatum.catalog.dto.OrderResponse
+import fatum.catalog.dto.request.BookService
+import fatum.catalog.dto.request.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
@@ -140,8 +140,8 @@ class OrderService(
         val order = getOrder(orderId)
         if (order.status != OrderStatus.DELIVERING)
             throw FatumServiceException(CatalogErrorCode.DELIVERING_NOT_CONFIRMED)
-        validateNotResponded(order.completionConfirmation, party)
 
+        validateNotResponded(order.completionConfirmation, party)
         order.completionConfirmation.deny(party)
 
         if (order.completionConfirmation.isContradicted)
@@ -268,4 +268,5 @@ class OrderService(
         )
         return accepted + delivering
     }
+
 }

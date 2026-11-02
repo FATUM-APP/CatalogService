@@ -3,8 +3,8 @@ package fatum.catalog.service
 import fatum.catalog.client.AddressDTO
 import fatum.catalog.client.M2User
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.BookService
-import fatum.catalog.dto.OrderResponse
+import fatum.catalog.dto.request.BookService
+import fatum.catalog.dto.request.OrderResponse
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem

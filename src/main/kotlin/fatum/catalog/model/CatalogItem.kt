@@ -32,6 +32,12 @@ class CatalogItem(
     val providerId: String,
     title: String,
 
+    @Column(name = "PROVIDER_NAME", length = 255, nullable = false)
+    val providerName: String,
+
+    @Column(name = "PROVIDER_USERNAME", length = 15, nullable = false)
+    val providerUsername: String,
+
     @Column(name = "DESCRIPTION", columnDefinition = "TEXT")
     var description: String? = null,
 

@@ -1,5 +1,4 @@
-package fatum.catalog.dto
-
+package fatum.catalog.dto.request
 
 import fatum.catalog.model.constant.JobType
 import fatum.catalog.model.constant.PriceType

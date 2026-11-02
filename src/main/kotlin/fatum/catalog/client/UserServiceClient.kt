@@ -31,6 +31,8 @@ class UserServiceClient(
 
 data class M2User(
     val userId: String,
+    val name: String,
+    val userName: String,
     val birthDate: LocalDate,
     val isProfessional: Boolean,
     val isVerified: Boolean,
@@ -48,5 +50,4 @@ data class AddressDTO(
     val city: String,
     val state: String,
     val country: String,
-    val userName: String
 )

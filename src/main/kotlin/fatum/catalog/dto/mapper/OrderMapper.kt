@@ -1,7 +1,7 @@
 package fatum.catalog.dto.mapper
 
 import fatum.catalog.client.M2User
-import fatum.catalog.dto.BookService
+import fatum.catalog.dto.request.BookService
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Order
 
@@ -11,7 +11,8 @@ fun BookService.toEntity(
 ) : Order{
     return Order(
         clientId = customer.userId,
-        clientName = customer.principalAddress.userName,
+        clientName = customer.name,
+        clientUsername = customer.userName,
         booking = booking,
         catalogItem = catalogItem,
         negotiatedPrice = negotiatedPrice ?: catalogItem.basePrice,

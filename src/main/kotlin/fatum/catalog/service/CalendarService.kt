@@ -6,8 +6,6 @@ import fatum.catalog.model.vo.CalendarDay
 import fatum.catalog.model.Order
 import fatum.catalog.model.ProviderAvailability
 import fatum.catalog.model.ProviderUnavailableRange
-import fatum.catalog.repository.ProviderAvailabilityRepository
-import fatum.catalog.repository.UnavailableRangeRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -15,8 +13,8 @@ import java.time.YearMonth
 
 @Service
 class CalendarService(
-    private val providerAvailabilityRepository: ProviderAvailabilityRepository,
-    private val unavailableRangeRepository: UnavailableRangeRepository,
+    private val providerAvailabilityService: ProviderAvailabilityService,
+    private val unavailableRangeService: ProviderUnavailableRangeService,
     private val orderService: OrderService
 ) {
 
@@ -28,8 +26,8 @@ class CalendarService(
         val startDateTime = startDate.atStartOfDay()
         val endDateTime = endDate.atTime(23, 59)
 
-        val availabilities = providerAvailabilityRepository.findByIdProviderId(providerId)
-        val unavailableRanges = unavailableRangeRepository.findByProviderId(providerId)
+        val availabilities = providerAvailabilityService.findAvailabilityByProvider(providerId)
+        val unavailableRanges = unavailableRangeService.findByProviderId(providerId)
         val activeOrders = orderService.findActiveOrders(providerId, startDateTime, endDateTime)
 
         return generateSequence(startDate) { it.plusDays(1) }
@@ -37,7 +35,6 @@ class CalendarService(
             .map { date -> buildCalendarDay(date, availabilities, unavailableRanges, activeOrders) }
             .toList()
     }
-
 
 
     private fun buildCalendarDay(

@@ -31,8 +31,11 @@ class Order(
     @Column(name = "CLIENT_ID", length = 36, nullable = false)
     val clientId: String,
 
-    @Column(name = "CLIENT_NAME", length = 15, nullable = false)
+    @Column(name = "CLIENT_NAME", length = 255, nullable = false)
     val clientName: String,
+
+    @Column(name = "CLIENT_USERNAME", length = 15, nullable = false)
+    val clientUsername: String,
 
     @Column(name = "BOOKING", nullable = false)
     var booking: LocalDateTime,

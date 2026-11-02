@@ -1,8 +1,9 @@
 package fatum.catalog.service
 
-import fatum.catalog.dto.CatalogImage
-import fatum.catalog.dto.CreateServiceRequest
-import fatum.catalog.dto.UpdateServiceRequest
+import fatum.catalog.client.UserServiceClient
+import fatum.catalog.dto.request.CatalogImage
+import fatum.catalog.dto.request.CreateServiceRequest
+import fatum.catalog.dto.request.UpdateServiceRequest
 
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
@@ -24,7 +25,8 @@ class CatalogItemService(
     private val catalogItemRepository: CatalogItemRepository,
     private val categoryService: CategoryService,
     private val fileStorageClient: FileStorageClient,
-    @Value("\${catalog.images.storage-route}") private val storageRoute: String
+    @Value("\${catalog.images.storage-route}") private val storageRoute: String,
+    private val userServiceClient: UserServiceClient,
 ) {
     //==========================================CREATE==============================================
 
@@ -35,12 +37,17 @@ class CatalogItemService(
      */
     @Transactional
     fun createCatalogItem(request: CreateServiceRequest, images: List<MultipartFile>): CatalogItem {
+        validateProfessional(request.providerId)
         validateImages(images)
         validateUniqueness(request)
 
         val serviceImages = transformToServiceImages(images)
         val category = categoryService.findCategory(request.category,true)
-        return catalogItemRepository.save(request.toEntity(serviceImages, category))
+        return catalogItemRepository.save(request.toEntity(
+            serviceImages,
+            category,
+            userServiceClient.getUserById(request.providerId)
+            ))
     }
 
 
@@ -198,6 +205,12 @@ class CatalogItemService(
             status = status,
             true
         )
+
+    private fun validateProfessional(providerId: String){
+        val provider = userServiceClient.getUserById(providerId)
+        if (!provider.isValid) throw FatumServiceException(CatalogErrorCode.INVALID_USER)
+        if (!provider.isProfessional) throw FatumServiceException(CatalogErrorCode.NOT_A_PROFESSIONAL)
+    }
 
     //==========================================IMAGES==============================================
     companion object {

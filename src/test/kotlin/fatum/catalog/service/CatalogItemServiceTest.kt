@@ -1,7 +1,7 @@
 package fatum.catalog.service
 
-import fatum.catalog.dto.CreateServiceRequest
-import fatum.catalog.dto.UpdateServiceRequest
+import fatum.catalog.dto.request.CreateServiceRequest
+import fatum.catalog.dto.request.UpdateServiceRequest
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
