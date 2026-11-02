@@ -2,10 +2,15 @@ package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
 import fatum.catalog.dto.BookService
+import fatum.catalog.dto.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
+import fatum.catalog.model.Order
+import fatum.catalog.model.constant.ConfirmingParty
+import fatum.catalog.model.constant.OrderStatus
 import fatum.catalog.model.constant.ServiceStatus
+import fatum.catalog.model.vo.DualConfirmation
 import fatum.catalog.repository.OrderRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -36,6 +41,64 @@ class OrderService(
         orderRepository.save(order.toEntity(item,client))
     }
 
+    @Transactional
+    fun acceptOrReject(response: OrderResponse) {
+        if (response.status !in listOf(OrderStatus.ACCEPTED, OrderStatus.REJECTED))
+            throw FatumServiceException(CatalogErrorCode.INVALID_RESPONSE)
+
+        if (response.status == OrderStatus.ACCEPTED && response.estimatedTime == null)
+            throw FatumServiceException(CatalogErrorCode.INVALID_RESPONSE)
+
+
+
+        val order = getOrder(response.orderId)
+        if (response.providerId != order.providerId)
+            throw FatumServiceException(CatalogErrorCode.FORBIDDEN)
+
+
+        order.apply {
+            status = response.status
+            estimatedTime = response.estimatedTime
+            reason = if (response.status == OrderStatus.REJECTED) response.reason else null
+        }
+
+        orderRepository.save(order)
+    }
+
+
+
+    //==========================================DUAL===========================================================
+
+    @Transactional
+    fun confirmStart(orderId: String, party: ConfirmingParty){
+        if(getOrder(orderId).status != OrderStatus.ACCEPTED)
+            throw FatumServiceException(CatalogErrorCode.ORDER_NOT_CONFIRMED)
+        processConfirmation(orderId, party) { it.startConfirmation }
+    }
+
+    @Transactional
+    fun confirmCompletion(orderId: String, party: ConfirmingParty){
+        if(!getOrder(orderId).startConfirmation.isConfirmed)
+            throw FatumServiceException(CatalogErrorCode.DELIVERING_NOT_CONFIRMED)
+        processConfirmation(orderId, party) { it.completionConfirmation }
+    }
+
+    @Transactional
+    fun confirmPayment(orderId: String, party: ConfirmingParty){
+        val order = getOrder(orderId)
+        if(!order.completionConfirmation.isConfirmed)
+            throw FatumServiceException(CatalogErrorCode.COMPLETION_NOT_CONFIRMED)
+        processConfirmation(orderId, party) { it.paymentConfirmation }
+        order.status = OrderStatus.COMPLETED
+    }
+
+
+
+
+
+
+
+
 
 
 
@@ -43,6 +106,8 @@ class OrderService(
     //==========================================HELPERS==============================================
 
     private fun getService(serviceId: String) = catalogItemService.findById(serviceId, ServiceStatus.ACTIVE)
+    private fun getOrder(orderId: String) = orderRepository.findById(orderId)
+        .orElseThrow { FatumServiceException(CatalogErrorCode.ORDER_NOT_FOUND) }
 
     private fun validateUser(userId : String){
         if(!userServiceClient.getUserById(userId).isValid)
@@ -80,4 +145,21 @@ class OrderService(
     private fun timeGapPolicy(time1: LocalDateTime, time2: LocalDateTime) : Boolean{
         return Duration.between(time1, time2).abs().toMinutes() < gapTime
     }
+
+    private fun processConfirmation(
+        orderId: String,
+        party: ConfirmingParty,
+        confirmationSelector: (Order) -> DualConfirmation
+    ) {
+        val order = getOrder(orderId)
+        val confirmation = confirmationSelector(order)
+
+        if (confirmation.hasConfirmed(party)) {
+            throw FatumServiceException(CatalogErrorCode.FORBIDDEN)
+        }
+
+        confirmation.confirm(party)
+        orderRepository.save(order)
+    }
+
 }

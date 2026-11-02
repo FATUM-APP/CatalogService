@@ -20,6 +20,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -87,14 +88,14 @@ class ProviderAvailabilityServiceTest {
 
         @Test
         fun `should update existing availability`() {
-            val existing = ProviderAvailability("provider-123", Day.MONDAY)
+            val existing = ProviderAvailability("provider-123", DayOfWeek.MONDAY)
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
-            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", Day.MONDAY))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
                 .thenReturn(existing)
             whenever(providerAvailabilityRepository.save(any<ProviderAvailability>()))
                 .thenAnswer { it.arguments[0] }
 
-            service.changeSchedule("provider-123", Day.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
+            service.changeSchedule("provider-123", DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
 
             assertAll(
                 { assertEquals(LocalTime.of(9, 0), existing.initialTime) },
@@ -106,12 +107,12 @@ class ProviderAvailabilityServiceTest {
         @Test
         fun `should create new availability when none exists`() {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
-            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", Day.SATURDAY))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.SATURDAY))
                 .thenReturn(null)
             whenever(providerAvailabilityRepository.save(any<ProviderAvailability>()))
                 .thenAnswer { it.arguments[0] }
 
-            service.changeSchedule("provider-123", Day.SATURDAY, LocalTime.of(10, 0), LocalTime.of(14, 0))
+            service.changeSchedule("provider-123", DayOfWeek.SATURDAY, LocalTime.of(10, 0), LocalTime.of(14, 0))
 
             verify(providerAvailabilityRepository).save(any())
         }
@@ -121,7 +122,7 @@ class ProviderAvailabilityServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(nonProfessionalUser)
 
             val ex = assertThrows<FatumServiceException> {
-                service.changeSchedule("provider-123", Day.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
+                service.changeSchedule("provider-123", DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
             }
 
             assertEquals(CatalogErrorCode.NOT_A_PROFESSIONAL, ex.errorCode)
@@ -134,15 +135,15 @@ class ProviderAvailabilityServiceTest {
 
         @Test
         fun `should set existing availability to all day`() {
-            val existing = ProviderAvailability("provider-123", Day.WEDNESDAY,
+            val existing = ProviderAvailability("provider-123", DayOfWeek.WEDNESDAY,
                 LocalTime.of(9, 0), LocalTime.of(17, 0))
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
-            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", Day.WEDNESDAY))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.WEDNESDAY))
                 .thenReturn(existing)
             whenever(providerAvailabilityRepository.save(any<ProviderAvailability>()))
                 .thenAnswer { it.arguments[0] }
 
-            service.fullDayAvailability("provider-123", Day.WEDNESDAY)
+            service.fullDayAvailability("provider-123", DayOfWeek.WEDNESDAY)
 
             assertAll(
                 { assertEquals(LocalTime.of(0, 0), existing.initialTime) },
@@ -154,12 +155,12 @@ class ProviderAvailabilityServiceTest {
         @Test
         fun `should create new all-day availability when none exists`() {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
-            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", Day.SUNDAY))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.SUNDAY))
                 .thenReturn(null)
             whenever(providerAvailabilityRepository.save(any<ProviderAvailability>()))
                 .thenAnswer { it.arguments[0] }
 
-            service.fullDayAvailability("provider-123", Day.SUNDAY)
+            service.fullDayAvailability("provider-123", DayOfWeek.SUNDAY)
 
             verify(providerAvailabilityRepository).save(any())
         }
@@ -169,7 +170,7 @@ class ProviderAvailabilityServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(inactiveUser)
 
             val ex = assertThrows<FatumServiceException> {
-                service.fullDayAvailability("provider-123", Day.MONDAY)
+                service.fullDayAvailability("provider-123", DayOfWeek.MONDAY)
             }
 
             assertEquals(CatalogErrorCode.INVALID_USER, ex.errorCode)
@@ -182,25 +183,99 @@ class ProviderAvailabilityServiceTest {
 
         @Test
         fun `should return availability when found`() {
-            val existing = ProviderAvailability("provider-123", Day.MONDAY)
-            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", Day.MONDAY))
+            val existing = ProviderAvailability("provider-123", DayOfWeek.MONDAY)
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
                 .thenReturn(existing)
 
-            val result = service.findAvailability("provider-123", Day.MONDAY)
+            val result = service.findAvailability("provider-123", DayOfWeek.MONDAY)
 
             assertSame(existing, result)
         }
 
         @Test
         fun `should throw AVAILABILITY_NOT_FOUND when not found`() {
-            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", Day.SUNDAY))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.SUNDAY))
                 .thenReturn(null)
 
             val ex = assertThrows<FatumServiceException> {
-                service.findAvailability("provider-123", Day.SUNDAY)
+                service.findAvailability("provider-123", DayOfWeek.SUNDAY)
             }
 
             assertEquals(CatalogErrorCode.AVAILABILITY_NOT_FOUND, ex.errorCode)
+        }
+    }
+
+    @Nested
+    inner class ProviderIsAvailable {
+
+        @Test
+        fun `should return true when time is within availability range`() {
+            val existing = ProviderAvailability("provider-123", DayOfWeek.MONDAY,
+                LocalTime.of(8, 0), LocalTime.of(17, 0))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(existing)
+
+            val result = service.providerIsAvailable("provider-123", DayOfWeek.MONDAY, LocalTime.of(10, 0))
+
+            assertTrue(result)
+        }
+
+        @Test
+        fun `should return true when time is at start boundary`() {
+            val existing = ProviderAvailability("provider-123", DayOfWeek.MONDAY,
+                LocalTime.of(8, 0), LocalTime.of(17, 0))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(existing)
+
+            val result = service.providerIsAvailable("provider-123", DayOfWeek.MONDAY, LocalTime.of(8, 0))
+
+            assertTrue(result)
+        }
+
+        @Test
+        fun `should return true when time is at end boundary`() {
+            val existing = ProviderAvailability("provider-123", DayOfWeek.MONDAY,
+                LocalTime.of(8, 0), LocalTime.of(17, 0))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(existing)
+
+            val result = service.providerIsAvailable("provider-123", DayOfWeek.MONDAY, LocalTime.of(17, 0))
+
+            assertTrue(result)
+        }
+
+        @Test
+        fun `should return false when time is before availability range`() {
+            val existing = ProviderAvailability("provider-123", DayOfWeek.MONDAY,
+                LocalTime.of(8, 0), LocalTime.of(17, 0))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(existing)
+
+            val result = service.providerIsAvailable("provider-123", DayOfWeek.MONDAY, LocalTime.of(7, 0))
+
+            assertFalse(result)
+        }
+
+        @Test
+        fun `should return false when time is after availability range`() {
+            val existing = ProviderAvailability("provider-123", DayOfWeek.MONDAY,
+                LocalTime.of(8, 0), LocalTime.of(17, 0))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(existing)
+
+            val result = service.providerIsAvailable("provider-123", DayOfWeek.MONDAY, LocalTime.of(18, 0))
+
+            assertFalse(result)
+        }
+
+        @Test
+        fun `should return false when no availability exists for day`() {
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.SUNDAY))
+                .thenReturn(null)
+
+            val result = service.providerIsAvailable("provider-123", DayOfWeek.SUNDAY, LocalTime.of(10, 0))
+
+            assertFalse(result)
         }
     }
 
@@ -210,8 +285,8 @@ class ProviderAvailabilityServiceTest {
         @Test
         fun `should return all availabilities for provider`() {
             val list = listOf(
-                ProviderAvailability("provider-123", Day.MONDAY),
-                ProviderAvailability("provider-123", Day.TUESDAY)
+                ProviderAvailability("provider-123", DayOfWeek.MONDAY),
+                ProviderAvailability("provider-123", DayOfWeek.TUESDAY)
             )
             whenever(providerAvailabilityRepository.findByIdProviderId("provider-123"))
                 .thenReturn(list)
@@ -237,22 +312,22 @@ class ProviderAvailabilityServiceTest {
 
         @Test
         fun `should delete existing availability`() {
-            val existing = ProviderAvailability("provider-123", Day.FRIDAY)
-            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", Day.FRIDAY))
+            val existing = ProviderAvailability("provider-123", DayOfWeek.FRIDAY)
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.FRIDAY))
                 .thenReturn(existing)
 
-            service.deleteAvailability("provider-123", Day.FRIDAY)
+            service.deleteAvailability("provider-123", DayOfWeek.FRIDAY)
 
             verify(providerAvailabilityRepository).delete(existing)
         }
 
         @Test
         fun `should throw AVAILABILITY_NOT_FOUND when deleting non-existent`() {
-            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", Day.SUNDAY))
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.SUNDAY))
                 .thenReturn(null)
 
             val ex = assertThrows<FatumServiceException> {
-                service.deleteAvailability("provider-123", Day.SUNDAY)
+                service.deleteAvailability("provider-123", DayOfWeek.SUNDAY)
             }
 
             assertEquals(CatalogErrorCode.AVAILABILITY_NOT_FOUND, ex.errorCode)

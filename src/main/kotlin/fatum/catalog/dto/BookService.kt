@@ -6,15 +6,21 @@ import fatum.catalog.model.vo.QuestionAnswer
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.PositiveOrZero
+import jakarta.validation.constraints.Size
+import org.jetbrains.annotations.NotNull
 import java.math.BigDecimal
 import java.time.LocalDateTime
 
 data class BookService(
     @field:NotBlank(message = "Client id is required")
+    @field:Size(max = 36, message = "Client id must not exceed 36 characters")
     val clientId: String,
 
+    @field:NotNull
     val booking: LocalDateTime,
 
+    @field:NotBlank(message = "Service id is required")
+    @field:Size(max = 36, message = "Service id must not exceed 36 characters")
     val serviceId: String,
 
     @field:PositiveOrZero(message = "Price cannot be negative")

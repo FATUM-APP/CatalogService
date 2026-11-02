@@ -7,13 +7,14 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import java.time.DayOfWeek
 import java.time.LocalTime
 
 class ProviderAvailabilityTest {
 
     private fun createAvailability(
         providerId: String = "provider-123",
-        day: Day = Day.MONDAY,
+        day: DayOfWeek = DayOfWeek.MONDAY,
         initialTime: LocalTime = LocalTime.of(8, 0),
         finalTime: LocalTime = LocalTime.of(17, 0)
     ) = ProviderAvailability(providerId, day, initialTime, finalTime)
@@ -27,7 +28,7 @@ class ProviderAvailabilityTest {
 
             assertAll(
                 { assertEquals("provider-123", availability.providerId) },
-                { assertEquals(Day.MONDAY, availability.day) },
+                { assertEquals(DayOfWeek.MONDAY, availability.day) },
                 { assertEquals(LocalTime.of(8, 0), availability.initialTime) },
                 { assertEquals(LocalTime.of(17, 0), availability.finalTime) }
             )
@@ -35,7 +36,7 @@ class ProviderAvailabilityTest {
 
         @Test
         fun `should create availability with default all-day times`() {
-            val availability = ProviderAvailability("provider-123", Day.FRIDAY)
+            val availability = ProviderAvailability("provider-123", DayOfWeek.FRIDAY)
 
             assertAll(
                 { assertEquals(LocalTime.of(0, 0), availability.initialTime) },
@@ -45,12 +46,12 @@ class ProviderAvailabilityTest {
 
         @Test
         fun `should create availability using composite id constructor`() {
-            val id = ProviderAvailabilityId("provider-123", Day.TUESDAY)
+            val id = ProviderAvailabilityId("provider-123", DayOfWeek.TUESDAY)
             val availability = ProviderAvailability(id)
 
             assertAll(
                 { assertEquals("provider-123", availability.providerId) },
-                { assertEquals(Day.TUESDAY, availability.day) },
+                { assertEquals(DayOfWeek.TUESDAY, availability.day) },
                 { assertEquals(id, availability.id) }
             )
         }
@@ -138,16 +139,16 @@ class ProviderAvailabilityTest {
 
         @Test
         fun `should be equal when same composite id`() {
-            val a = createAvailability(day = Day.MONDAY)
-            val b = createAvailability(day = Day.MONDAY,
+            val a = createAvailability(day = DayOfWeek.MONDAY)
+            val b = createAvailability(day = DayOfWeek.MONDAY,
                 initialTime = LocalTime.of(10, 0), finalTime = LocalTime.of(14, 0))
             assertEquals(a, b)
         }
 
         @Test
         fun `should not be equal when different day`() {
-            val a = createAvailability(day = Day.MONDAY)
-            val b = createAvailability(day = Day.TUESDAY)
+            val a = createAvailability(day = DayOfWeek.MONDAY)
+            val b = createAvailability(day = DayOfWeek.TUESDAY)
             assertNotEquals(a, b)
         }
 

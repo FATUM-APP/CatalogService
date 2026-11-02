@@ -34,11 +34,10 @@ class OrderTest {
 
     private fun createOrder(
         clientId: String = "client-456",
-        clientUsername: String = "juanperez",
+        clientName: String = "juanperez",
         booking: LocalDateTime = LocalDateTime.of(2026, 11, 15, 10, 0),
         item: CatalogItem = catalogItem,
         negotiatedPrice: BigDecimal = item.basePrice,
-        estimatedTime: Int? = item.defaultEstimatedTime,
         deliveryCity: String = "Bogota",
         deliveryState: String = "Cundinamarca",
         deliveryCountry: String = "Colombia",
@@ -47,11 +46,10 @@ class OrderTest {
         requirements: String? = null
     ) = Order(
         clientId = clientId,
-        clientUsername = clientUsername,
+        clientName = clientName,
         booking = booking,
         catalogItem = item,
         negotiatedPrice = negotiatedPrice,
-        estimatedTime = estimatedTime,
         deliveryCity = deliveryCity,
         deliveryState = deliveryState,
         deliveryCountry = deliveryCountry,
@@ -69,7 +67,7 @@ class OrderTest {
 
             assertAll(
                 { assertEquals("client-456", order.clientId) },
-                { assertEquals("juanperez", order.clientUsername) },
+                { assertEquals("juanperez", order.clientName) },
                 { assertEquals("provider-123", order.providerId) },
                 { assertEquals(BigDecimal(100), order.negotiatedPrice) },
                 { assertEquals(60, order.estimatedTime) },
@@ -83,23 +81,32 @@ class OrderTest {
         }
 
         @Test
-        fun `should create order with custom negotiated price and estimated time`() {
-            val order = createOrder(
-                negotiatedPrice = BigDecimal(250),
-                estimatedTime = 120
-            )
+        fun `should create order with custom negotiated price`() {
+            val order = createOrder(negotiatedPrice = BigDecimal(250))
 
-            assertAll(
-                { assertEquals(BigDecimal(250), order.negotiatedPrice) },
-                { assertEquals(120, order.estimatedTime) }
-            )
+            assertEquals(BigDecimal(250), order.negotiatedPrice)
+        }
+
+        @Test
+        fun `should derive estimated time from catalog item`() {
+            val order = createOrder()
+
+            assertEquals(catalogItem.defaultEstimatedTime, order.estimatedTime)
+        }
+
+        @Test
+        fun `should allow modifying estimated time after creation`() {
+            val order = createOrder()
+            order.estimatedTime = 120
+
+            assertEquals(120, order.estimatedTime)
         }
 
         @Test
         fun `should create order with answers and requirements`() {
             val answers = setOf(
-                QuestionAnswer("Tipo de tuberia", QuestionType.SINGLE_CHOICE, setOf("PVC")),
-                QuestionAnswer("Es urgente", QuestionType.BOOLEAN, setOf("true"))
+                QuestionAnswer("Tipo de tuberia", setOf("PVC")),
+                QuestionAnswer("Es urgente", setOf("true"))
             )
             val order = createOrder(answers = answers, requirements = "Llegar por la puerta trasera")
 
@@ -107,12 +114,6 @@ class OrderTest {
                 { assertEquals(2, order.answers.size) },
                 { assertEquals("Llegar por la puerta trasera", order.requirements) }
             )
-        }
-
-        @Test
-        fun `should add order to catalog item`() {
-            val order = createOrder()
-            assertTrue(catalogItem.orders.contains(order))
         }
 
         @Test
@@ -131,23 +132,28 @@ class OrderTest {
 
         @Test
         fun `should throw MAX_ESTIMATED_TIME when estimated time exceeds 1440`() {
+            val order = createOrder()
+
             val ex = assertThrows<FatumServiceException> {
-                createOrder(estimatedTime = 1441)
+                order.estimatedTime = 1441
             }
             assertEquals(CatalogErrorCode.MAX_ESTIMATED_TIME, ex.errorCode)
         }
 
         @Test
         fun `should throw MAX_ESTIMATED_TIME on negative estimated time`() {
+            val order = createOrder()
+
             val ex = assertThrows<FatumServiceException> {
-                createOrder(estimatedTime = -1)
+                order.estimatedTime = -1
             }
             assertEquals(CatalogErrorCode.MAX_ESTIMATED_TIME, ex.errorCode)
         }
 
         @Test
         fun `should allow null estimated time`() {
-            val order = createOrder(estimatedTime = null)
+            val order = createOrder()
+            order.estimatedTime = null
             assertNull(order.estimatedTime)
         }
 
@@ -159,7 +165,8 @@ class OrderTest {
 
         @Test
         fun `should allow estimated time of exactly 1440`() {
-            val order = createOrder(estimatedTime = 1440)
+            val order = createOrder()
+            order.estimatedTime = 1440
             assertEquals(1440, order.estimatedTime)
         }
     }

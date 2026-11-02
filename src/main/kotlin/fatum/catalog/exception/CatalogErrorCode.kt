@@ -40,9 +40,14 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
 
     // Ordenes
     PROVIDER_UNAVAILABLE("Provider is not available at the requested time", HttpStatus.BAD_REQUEST),
-    ORDER_ALREADY_PAYED("Once the order is payed can't be changed", HttpStatus.CONFLICT),
+    ORDER_NOT_FOUND("Order not found", HttpStatus.NOT_FOUND),
     OVERLAPPING_RANGE("The time range is overlapping with another range", HttpStatus.BAD_REQUEST),
     DUPLICATE_ANSWER("A question can only be answered once", HttpStatus.BAD_REQUEST),
+    INVALID_RESPONSE("Invalid response", HttpStatus.BAD_REQUEST),
+    FORBIDDEN("User can't realize this action", HttpStatus.FORBIDDEN),
+    DELIVERING_NOT_CONFIRMED("Delivering has not been confirmed", HttpStatus.BAD_REQUEST),
+    COMPLETION_NOT_CONFIRMED("Completion has not been confirmed", HttpStatus.BAD_REQUEST),
+    ORDER_NOT_CONFIRMED("Order has not been confirmed", HttpStatus.BAD_REQUEST),
 
     // Usuario
     NOT_A_PROFESSIONAL("User is not a professional", HttpStatus.BAD_REQUEST),

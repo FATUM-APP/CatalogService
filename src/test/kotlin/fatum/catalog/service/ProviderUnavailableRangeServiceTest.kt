@@ -182,7 +182,7 @@ class ProviderUnavailableRangeServiceTest {
     }
 
     @Nested
-    inner class ChangeUnavailabilitySchedule {
+    inner class ChangeUnavailabilityScheduleTest {
 
         @Test
         fun `should change dates of existing unavailability`() {
@@ -342,6 +342,90 @@ class ProviderUnavailableRangeServiceTest {
             val result = service.findProviderUnavailableRangesByMonth("provider-123", yearMonth)
 
             assertTrue(result.isEmpty())
+        }
+    }
+
+    @Nested
+    inner class ScheduledDateInRange {
+
+        @Test
+        fun `should return true when date falls within unavailability range`() {
+            val range = existingRange(
+                start = LocalDateTime.of(2026, 12, 1, 0, 0),
+                end = LocalDateTime.of(2026, 12, 5, 23, 59)
+            )
+            whenever(unavailableRangeRepository.findByProviderId("provider-123"))
+                .thenReturn(listOf(range))
+
+            val result = service.scheduledDateInRange("provider-123", LocalDateTime.of(2026, 12, 3, 10, 0))
+
+            assertTrue(result)
+        }
+
+        @Test
+        fun `should return true when date is at start boundary`() {
+            val range = existingRange(
+                start = LocalDateTime.of(2026, 12, 1, 8, 0),
+                end = LocalDateTime.of(2026, 12, 5, 18, 0)
+            )
+            whenever(unavailableRangeRepository.findByProviderId("provider-123"))
+                .thenReturn(listOf(range))
+
+            val result = service.scheduledDateInRange("provider-123", LocalDateTime.of(2026, 12, 1, 8, 0))
+
+            assertTrue(result)
+        }
+
+        @Test
+        fun `should return true when date is at end boundary`() {
+            val range = existingRange(
+                start = LocalDateTime.of(2026, 12, 1, 8, 0),
+                end = LocalDateTime.of(2026, 12, 5, 18, 0)
+            )
+            whenever(unavailableRangeRepository.findByProviderId("provider-123"))
+                .thenReturn(listOf(range))
+
+            val result = service.scheduledDateInRange("provider-123", LocalDateTime.of(2026, 12, 5, 18, 0))
+
+            assertTrue(result)
+        }
+
+        @Test
+        fun `should return false when date is before all ranges`() {
+            val range = existingRange(
+                start = LocalDateTime.of(2026, 12, 10, 0, 0),
+                end = LocalDateTime.of(2026, 12, 15, 23, 59)
+            )
+            whenever(unavailableRangeRepository.findByProviderId("provider-123"))
+                .thenReturn(listOf(range))
+
+            val result = service.scheduledDateInRange("provider-123", LocalDateTime.of(2026, 12, 5, 10, 0))
+
+            assertFalse(result)
+        }
+
+        @Test
+        fun `should return false when date is after all ranges`() {
+            val range = existingRange(
+                start = LocalDateTime.of(2026, 12, 1, 0, 0),
+                end = LocalDateTime.of(2026, 12, 5, 23, 59)
+            )
+            whenever(unavailableRangeRepository.findByProviderId("provider-123"))
+                .thenReturn(listOf(range))
+
+            val result = service.scheduledDateInRange("provider-123", LocalDateTime.of(2026, 12, 10, 10, 0))
+
+            assertFalse(result)
+        }
+
+        @Test
+        fun `should return false when provider has no unavailability ranges`() {
+            whenever(unavailableRangeRepository.findByProviderId("provider-123"))
+                .thenReturn(emptyList())
+
+            val result = service.scheduledDateInRange("provider-123", LocalDateTime.of(2026, 12, 3, 10, 0))
+
+            assertFalse(result)
         }
     }
 

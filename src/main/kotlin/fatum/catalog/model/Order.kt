@@ -78,7 +78,7 @@ class Order(
 
     @Column(name = "NEGOTIATED_PRICE", nullable = false, precision = 10, scale = 2)
     var negotiatedPrice: BigDecimal = BigDecimal.ZERO
-        set(value) {
+        protected set(value) {
             if (value < BigDecimal.ZERO)
                 throw FatumServiceException(CatalogErrorCode.NEGATIVE_PRICE)
             field = value
@@ -94,7 +94,7 @@ class Order(
 
     @Column(name = "DELIVERY_STARTED_AT")
     var deliveryStartedAt: LocalDateTime? = null
-        protected set
+
 
     @Embedded
     @AttributeOverrides(
@@ -123,6 +123,7 @@ class Order(
     @Enumerated(EnumType.STRING)
     @Column(name = "ORDER_STATUS", nullable = false, length = 12)
     var status: OrderStatus = OrderStatus.PENDING
+
 
 
     init {

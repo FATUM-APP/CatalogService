@@ -14,6 +14,11 @@ data class DualConfirmation(
 ) {
     val isConfirmed: Boolean get() = byCustomer && byProvider
 
+    fun hasConfirmed(party: ConfirmingParty): Boolean = when (party) {
+        ConfirmingParty.CUSTOMER -> byCustomer
+        ConfirmingParty.PROVIDER -> byProvider
+    }
+
     fun confirm(party: ConfirmingParty) {
         when (party) {
             ConfirmingParty.CUSTOMER -> byCustomer = true
