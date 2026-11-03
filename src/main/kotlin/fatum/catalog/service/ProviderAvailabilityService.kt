@@ -1,6 +1,9 @@
 package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
+import fatum.catalog.dto.mapper.toEntity
+import fatum.catalog.dto.request.schedule.ChangeAvailability
+import fatum.catalog.dto.request.schedule.FullAvailability
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.ProviderAvailability
@@ -34,34 +37,23 @@ class ProviderAvailabilityService(
 
     @Transactional
     fun changeSchedule(
-        providerId: String,
-        day: DayOfWeek,
-        newInitialTime: LocalTime,
-        newFinalTime: LocalTime
+        request : ChangeAvailability
     ) {
-        validateProfessional(providerId)
+        validateProfessional(request.providerId)
 
-        val availability = getAvailability(providerId, day)?.apply {
-            changeSchedule(newInitialTime, newFinalTime)
-        } ?: ProviderAvailability(
-            providerId = providerId,
-            day = day,
-            initialTime = newInitialTime,
-            finalTime = newFinalTime
-        )
+        val availability = getAvailability(request.providerId, request.day)?.apply {
+            changeSchedule(request.start, request.end)
+        } ?: request.toEntity()
 
         providerAvailabilityRepository.save(availability)
     }
 
     @Transactional
-    fun fullDayAvailability(providerId: String, day: DayOfWeek){
-        validateProfessional(providerId)
-        val availability = getAvailability(providerId, day)?.apply {
+    fun fullDayAvailability(request : FullAvailability){
+        validateProfessional(request.providerId)
+        val availability = getAvailability(request.providerId, request.day)?.apply {
             changeAvailabilityToAllDay()
-        } ?: ProviderAvailability(
-            providerId = providerId,
-            day = day
-        )
+        } ?: request.toEntity()
         providerAvailabilityRepository.save(availability)
     }
 
@@ -75,8 +67,6 @@ class ProviderAvailabilityService(
         getAvailability(providerId, day)?.let {
             !time.isBefore(it.initialTime) && !time.isAfter(it.finalTime)
         } ?: false
-
-
 
 
     @Transactional(readOnly = true)

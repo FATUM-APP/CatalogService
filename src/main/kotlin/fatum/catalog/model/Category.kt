@@ -22,6 +22,7 @@ class Category private constructor(
     @Column(name = "NAME", length = 30, nullable = false, unique = true, updatable = false)
     val name: String = toTitle(name)
 
+
     @Column(name = "SLUG", length = 30, nullable = false, updatable = false)
     val slug: String = this.name.lowercase().replace(" ", "-")
 
@@ -114,8 +115,8 @@ class Category private constructor(
     override fun equals(other: Any?): Boolean {
         if (other !is Category) return false
         if (this === other) return true
-        return this.name == other.name
+        return this.slug == other.slug
     }
 
-    override fun hashCode(): Int = this.name.hashCode()
+    override fun hashCode(): Int = this.slug.hashCode()
 }

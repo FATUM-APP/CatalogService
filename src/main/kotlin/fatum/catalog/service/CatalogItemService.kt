@@ -91,15 +91,12 @@ class CatalogItemService(
     fun searchInCatalog(keyword: String, status : ServiceStatus? = null): List<CatalogItem> =
         catalogItemRepository.searchInCatalog(keyword,status,true)
 
-    /**
-     * Filter catalog items by combining optional criteria
-     */
-    @Transactional(readOnly = true)
     fun filterCatalog(
         priceType: PriceType? = null,
         minPrice: BigDecimal? = BigDecimal.ZERO,
         maxPrice: BigDecimal? = null,
         isNegotiable: Boolean? = null,
+        categoryName: String? = null,
         status: ServiceStatus? = ServiceStatus.ACTIVE
     ): List<CatalogItem> =
         catalogItemsFilter(
@@ -107,6 +104,7 @@ class CatalogItemService(
             minPrice = minPrice,
             maxPrice = maxPrice,
             isNegotiable = isNegotiable,
+            categoryName = categoryName,
             status = status
         )
 
@@ -201,6 +199,7 @@ class CatalogItemService(
         minPrice: BigDecimal? = BigDecimal.ZERO,
         maxPrice: BigDecimal? = null,
         isNegotiable: Boolean? = null,
+        categoryName: String? = null,
         status: ServiceStatus? = ServiceStatus.ACTIVE
     ): List<CatalogItem> =
         catalogItemRepository.filterCatalog(
@@ -209,6 +208,7 @@ class CatalogItemService(
             maxPrice = maxPrice,
             isNegotiable = isNegotiable,
             status = status,
+            categoryName = categoryName,
             true
         )
 

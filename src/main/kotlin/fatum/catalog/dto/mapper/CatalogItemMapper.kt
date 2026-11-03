@@ -42,7 +42,8 @@ fun CatalogItem.toDto(): ItemResponse =
         isNegotiable = this.isNegotiable,
         defaultEstimatedTime = this.defaultEstimatedTime,
         jobType = this.jobType.name,
-        category = this.category.name,
+        category = if(this.category.parent != null) "${this.category.parent?.slug} / ${this.category.slug}"
+        else this.category.name,
         fixedQuestions = this.fixedQuestions
     )
 

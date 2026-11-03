@@ -1,6 +1,9 @@
 package fatum.catalog.service
 
 
+import fatum.catalog.dto.mapper.toRoot
+import fatum.catalog.dto.mapper.toSubcategory
+import fatum.catalog.dto.request.category.CreateCategoryRequest
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -17,18 +20,20 @@ class CategoryService(
 ) {
 
     @Transactional
-    fun createRoot(name: String, scheduling: SchedulingModel): Category {
-        if (categoryRepository.existsByNameIgnoreCase(name))
+    fun createRoot(request : CreateCategoryRequest){
+        val category = request.toRoot()
+        if (categoryRepository.existsByNameIgnoreCase(category.name))
             throw FatumServiceException(CatalogErrorCode.CATEGORY_EXISTS)
-        return categoryRepository.save(Category(name,scheduling))
+        categoryRepository.save(category)
     }
 
     @Transactional
-    fun createSubCategory(name: String, parentName: String): Category {
-        if (categoryRepository.existsByNameIgnoreCase(name))
+    fun createSubCategory(request : CreateCategoryRequest){
+        val subcategory = request.toSubcategory(getCategory(request.parent ?: ""))
+        if (categoryRepository.existsByNameIgnoreCase(subcategory.name))
             throw FatumServiceException(CatalogErrorCode.CATEGORY_EXISTS)
-        val parent = getCategory(parentName)
-        return categoryRepository.save(Category(name, parent))
+
+        categoryRepository.save(subcategory)
     }
 
 
