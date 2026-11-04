@@ -11,10 +11,11 @@ import fatum.catalog.model.constant.PriceType
 import fatum.catalog.model.constant.SchedulingModel
 import fatum.catalog.model.constant.ServiceStatus
 import fatum.catalog.repository.CategoryRepository
+import io.github.fatumapp.storage.FileStorageClient
+import io.github.fatumapp.storage.StoredFile
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.InjectMocks
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.junit.jupiter.api.Nested
@@ -22,28 +23,41 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.web.multipart.MultipartFile
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 @ExtendWith(MockitoExtension::class)
 class CategoryServiceTest {
 
+    @Mock lateinit var repository: CategoryRepository
+    @Mock lateinit var fileStorageClient: FileStorageClient
 
-    @Mock
-    lateinit var repository: CategoryRepository
-    @InjectMocks
-    lateinit var service: CategoryService
-
+    private lateinit var service: CategoryService
     private lateinit var belleza: Category
-
 
     @BeforeEach
     fun setUp() {
+        service = CategoryService(repository, fileStorageClient, "test-logo-route")
         belleza = Category("Belleza", SchedulingModel.SINGLE_SESSION)
     }
+
+    private fun validImage(): MultipartFile {
+        val file = mock<MultipartFile>()
+        whenever(file.isEmpty).thenReturn(false)
+        whenever(file.size).thenReturn(1024)
+        whenever(file.contentType).thenReturn("image/jpeg")
+        return file
+    }
+
+    private fun uploadResult(key: String = "logo-key-1") = StoredFile(
+        id = null, key = key, bucket = null,
+        originalFilename = "logo.jpg", contentType = "image/jpeg", size = 1024
+    )
 
     @Nested
     inner class CreateCategory {
@@ -57,11 +71,51 @@ class CategoryServiceTest {
             )
 
             val exception = assertThrows<FatumServiceException> {
-                service.createRoot(request)
+                service.createRoot(request, null)
             }
 
             assertEquals(CatalogErrorCode.CATEGORY_EXISTS, exception.errorCode)
             verify(repository, never()).save(any())
+        }
+
+        @Test
+        fun `createRoot should upload logo when provided`() {
+            whenever(repository.existsByNameIgnoreCase("Belleza")).thenReturn(false)
+            val image = validImage()
+            whenever(fileStorageClient.upload(image, "test-logo-route")).thenReturn(uploadResult())
+
+            val captor = argumentCaptor<Category>()
+            whenever(repository.save(captor.capture())).thenAnswer { it.arguments[0] }
+
+            val request = CreateCategoryRequest(
+                name = "Belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
+            service.createRoot(request, image)
+
+            val saved = captor.firstValue
+            assertEquals("Belleza", saved.name)
+            assertEquals("logo-key-1", saved.logoKey)
+            verify(fileStorageClient).upload(image, "test-logo-route")
+        }
+
+        @Test
+        fun `createRoot should work without logo`() {
+            whenever(repository.existsByNameIgnoreCase("Belleza")).thenReturn(false)
+
+            val captor = argumentCaptor<Category>()
+            whenever(repository.save(captor.capture())).thenAnswer { it.arguments[0] }
+
+            val request = CreateCategoryRequest(
+                name = "Belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
+            service.createRoot(request, null)
+
+            val saved = captor.firstValue
+            assertEquals("Belleza", saved.name)
+            assertNull(saved.logoKey)
+            verify(fileStorageClient, never()).upload(any(), any())
         }
 
         @Test
@@ -76,7 +130,7 @@ class CategoryServiceTest {
             )
 
             val exception = assertThrows<FatumServiceException> {
-                service.createSubCategory(request)
+                service.createSubCategory(request, null)
             }
 
             assertEquals(CatalogErrorCode.CATEGORY_EXISTS, exception.errorCode)
@@ -94,7 +148,7 @@ class CategoryServiceTest {
             )
 
             val exception = assertThrows<FatumServiceException> {
-                service.createSubCategory(request)
+                service.createSubCategory(request, null)
             }
 
             assertEquals(CatalogErrorCode.CATEGORY_NOT_FOUND, exception.errorCode)
@@ -113,7 +167,7 @@ class CategoryServiceTest {
                 name = "Belleza",
                 schedulingModel = SchedulingModel.SINGLE_SESSION
             )
-            service.createRoot(request)
+            service.createRoot(request, null)
 
             val saved = captor.firstValue
             assertEquals("Belleza", saved.name)
@@ -135,7 +189,7 @@ class CategoryServiceTest {
                 _parent = "Belleza",
                 schedulingModel = SchedulingModel.SINGLE_SESSION
             )
-            service.createSubCategory(request)
+            service.createSubCategory(request, null)
 
             val saved = captor.firstValue
             verify(repository).findByNameIgnoreCase("Belleza")
@@ -145,6 +199,62 @@ class CategoryServiceTest {
             verify(repository).existsByNameIgnoreCase("Uñas")
         }
 
+        @Test
+        fun `createRoot should throw INVALID_IMAGE when logo is empty`() {
+            val image = mock<MultipartFile>()
+            whenever(image.isEmpty).thenReturn(true)
+
+            val request = CreateCategoryRequest(
+                name = "Belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
+
+            val exception = assertThrows<FatumServiceException> {
+                service.createRoot(request, image)
+            }
+
+            assertEquals(CatalogErrorCode.INVALID_IMAGE, exception.errorCode)
+            verify(repository, never()).save(any())
+        }
+
+        @Test
+        fun `createRoot should throw IMAGE_TOO_LARGE when logo exceeds limit`() {
+            val image = mock<MultipartFile>()
+            whenever(image.isEmpty).thenReturn(false)
+            whenever(image.size).thenReturn(4L * 1024 * 1024)
+
+            val request = CreateCategoryRequest(
+                name = "Belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
+
+            val exception = assertThrows<FatumServiceException> {
+                service.createRoot(request, image)
+            }
+
+            assertEquals(CatalogErrorCode.IMAGE_TOO_LARGE, exception.errorCode)
+            verify(repository, never()).save(any())
+        }
+
+        @Test
+        fun `createRoot should throw INVALID_IMAGE_FORMAT for unsupported type`() {
+            val image = mock<MultipartFile>()
+            whenever(image.isEmpty).thenReturn(false)
+            whenever(image.size).thenReturn(1024)
+            whenever(image.contentType).thenReturn("image/gif")
+
+            val request = CreateCategoryRequest(
+                name = "Belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
+
+            val exception = assertThrows<FatumServiceException> {
+                service.createRoot(request, image)
+            }
+
+            assertEquals(CatalogErrorCode.INVALID_IMAGE_FORMAT, exception.errorCode)
+            verify(repository, never()).save(any())
+        }
     }
 
     @Nested
@@ -457,6 +567,115 @@ class CategoryServiceTest {
         }
     }
 
+    @Nested
+    inner class UpdateLogo {
 
+        @Test
+        fun `should upload logo for category without existing logo`() {
+            whenever(repository.findByNameIgnoreCase("Belleza")).thenReturn(belleza)
+            val image = validImage()
+            whenever(fileStorageClient.upload(image, "test-logo-route")).thenReturn(uploadResult())
 
+            service.updateLogo("Belleza", image)
+
+            assertEquals("logo-key-1", belleza.logoKey)
+            verify(fileStorageClient).upload(image, "test-logo-route")
+            verify(fileStorageClient, never()).delete(any(), any())
+            verify(repository).save(belleza)
+        }
+
+        @Test
+        fun `should delete old logo before uploading new one`() {
+            belleza.logoKey = "old-logo-key"
+            whenever(repository.findByNameIgnoreCase("Belleza")).thenReturn(belleza)
+            val image = validImage()
+            whenever(fileStorageClient.upload(image, "test-logo-route")).thenReturn(uploadResult("new-logo-key"))
+
+            service.updateLogo("Belleza", image)
+
+            assertEquals("new-logo-key", belleza.logoKey)
+            verify(fileStorageClient).delete("test-logo-route", "old-logo-key")
+            verify(fileStorageClient).upload(image, "test-logo-route")
+            verify(repository).save(belleza)
+        }
+
+        @Test
+        fun `should throw INVALID_IMAGE when image is empty`() {
+            whenever(repository.findByNameIgnoreCase("Belleza")).thenReturn(belleza)
+            val image = mock<MultipartFile>()
+            whenever(image.isEmpty).thenReturn(true)
+
+            val exception = assertThrows<FatumServiceException> {
+                service.updateLogo("Belleza", image)
+            }
+
+            assertEquals(CatalogErrorCode.INVALID_IMAGE, exception.errorCode)
+            verify(fileStorageClient, never()).upload(any(), any())
+        }
+
+        @Test
+        fun `should throw IMAGE_TOO_LARGE when image exceeds max size`() {
+            whenever(repository.findByNameIgnoreCase("Belleza")).thenReturn(belleza)
+            val image = mock<MultipartFile>()
+            whenever(image.isEmpty).thenReturn(false)
+            whenever(image.size).thenReturn(4L * 1024 * 1024)
+
+            val exception = assertThrows<FatumServiceException> {
+                service.updateLogo("Belleza", image)
+            }
+
+            assertEquals(CatalogErrorCode.IMAGE_TOO_LARGE, exception.errorCode)
+            verify(fileStorageClient, never()).upload(any(), any())
+        }
+
+        @Test
+        fun `should throw INVALID_IMAGE_FORMAT when content type is not allowed`() {
+            whenever(repository.findByNameIgnoreCase("Belleza")).thenReturn(belleza)
+            val image = mock<MultipartFile>()
+            whenever(image.isEmpty).thenReturn(false)
+            whenever(image.size).thenReturn(1024)
+            whenever(image.contentType).thenReturn("image/gif")
+
+            val exception = assertThrows<FatumServiceException> {
+                service.updateLogo("Belleza", image)
+            }
+
+            assertEquals(CatalogErrorCode.INVALID_IMAGE_FORMAT, exception.errorCode)
+            verify(fileStorageClient, never()).upload(any(), any())
+        }
+
+        @Test
+        fun `should throw CATEGORY_NOT_FOUND when category does not exist`() {
+            whenever(repository.findByNameIgnoreCase("Inexistente")).thenReturn(null)
+            val image = mock<MultipartFile>()
+
+            val exception = assertThrows<FatumServiceException> {
+                service.updateLogo("Inexistente", image)
+            }
+
+            assertEquals(CatalogErrorCode.CATEGORY_NOT_FOUND, exception.errorCode)
+        }
+    }
+
+    @Nested
+    inner class GetCategoryLogoUrl {
+
+        @Test
+        fun `should return presigned url when logo exists`() {
+            belleza.logoKey = "logo-key"
+            whenever(fileStorageClient.presignedUrl("test-logo-route", "logo-key"))
+                .thenReturn("https://storage.example.com/logo-key")
+
+            val url = service.getCategoryLogoUrl(belleza)
+
+            assertEquals("https://storage.example.com/logo-key", url)
+        }
+
+        @Test
+        fun `should return null when no logo`() {
+            val url = service.getCategoryLogoUrl(belleza)
+
+            assertNull(url)
+        }
+    }
 }
