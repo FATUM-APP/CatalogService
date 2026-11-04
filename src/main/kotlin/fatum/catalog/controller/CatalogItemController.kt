@@ -77,7 +77,7 @@ class CatalogItemController(
             catalogItemService.searchInCatalog(filterKeyword, ServiceStatus.ACTIVE).map { it.toDto() }
         )
 
-    @GetMapping(params = ["priceType", "minPrice", "maxPrice", "isNegotiable", "categoryName"])
+    @GetMapping("/filter")
     fun filterCatalog(
         @RequestParam(required = false) priceType: PriceType?,
         @RequestParam(required = false, defaultValue = "0") minPrice: BigDecimal?,
@@ -127,7 +127,7 @@ class CatalogItemController(
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 
-    @PutMapping("/avtivate")
+    @PutMapping("/activate")
     fun activateItem(@RequestBody request : ActivateCatalogItem) : ResponseEntity<Void> {
         catalogItemService.activate(request)
         return ResponseEntity.status(HttpStatus.OK).build()
