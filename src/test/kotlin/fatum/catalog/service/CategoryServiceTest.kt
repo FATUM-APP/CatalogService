@@ -66,6 +66,7 @@ class CategoryServiceTest {
 
         @Test
         fun `createSubCategory should throw CATEGORY_EXISTS when name already exists`() {
+            whenever(repository.findByNameIgnoreCase("belleza")).thenReturn(belleza)
             whenever(repository.existsByNameIgnoreCase("Uñas")).thenReturn(true)
 
             val request = CreateCategoryRequest(
@@ -84,7 +85,6 @@ class CategoryServiceTest {
 
         @Test
         fun `createSubCategory should throw when parent does not exist`() {
-            whenever(repository.existsByNameIgnoreCase("Uñas")).thenReturn(false)
             whenever(repository.findByNameIgnoreCase("Belleza")).thenReturn(null)
 
             val request = CreateCategoryRequest(
@@ -98,7 +98,6 @@ class CategoryServiceTest {
             }
 
             assertEquals(CatalogErrorCode.CATEGORY_NOT_FOUND, exception.errorCode)
-            verify(repository).existsByNameIgnoreCase("Uñas")
             verify(repository).findByNameIgnoreCase("Belleza")
             verify(repository, never()).save(any())
         }
