@@ -4,7 +4,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 3MB
-      max-request-size: 32MB
+      max-request-size: 8MB
 
 cognito:
   token-url: ${TOKEN_URL:https://us-east-19qukvptss.auth.us-east-1.amazoncognito.com/oauth2/token}
