@@ -91,6 +91,7 @@ class CatalogItemService(
     fun searchInCatalog(keyword: String, status : ServiceStatus? = null): List<CatalogItem> =
         catalogItemRepository.searchInCatalog(keyword,status,true)
 
+    //DUMMY
     @Transactional(readOnly = true)
     fun filterCatalog(
         priceType: PriceType? = null,
