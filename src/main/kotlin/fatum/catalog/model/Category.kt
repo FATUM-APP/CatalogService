@@ -15,12 +15,17 @@ class Category private constructor(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PARENT_NAME", referencedColumnName = "NAME")
-    val parent: Category? = null
+    val parent: Category? = null,
+
+    @Column(name = "LOGO_KEY", length = 512)
+    var logoKey: String? = null
+
 ) {
 
     @Id
     @Column(name = "NAME", length = 30, nullable = false, unique = true, updatable = false)
     val name: String = toTitle(name)
+
 
     @Column(name = "SLUG", length = 30, nullable = false, updatable = false)
     val slug: String = this.name.lowercase().replace(" ", "-")
@@ -51,20 +56,23 @@ class Category private constructor(
      * @param name
      * @param schedulingModel
      */
-    constructor(name: String, schedulingModel: SchedulingModel) : this(name, schedulingModel, null)
+    constructor(name: String, schedulingModel: SchedulingModel, logoKey: String? = null) : this(
+        name = name,
+        schedulingModel = schedulingModel,
+        null,
+        logoKey = logoKey)
 
     /**
      * Subcategory constructor
      * @param name
      * @param parent
      */
-    constructor(name: String, parent: Category) : this(
+    constructor(name: String, parent: Category, logoKey: String? = null) : this(
         name,
         parent.schedulingModel,
-        parent
-    ) {
-
-    }
+        parent,
+        logoKey
+    )
 
     fun hasServices(): Boolean {
         if (_services.isNotEmpty()) return true
@@ -114,8 +122,8 @@ class Category private constructor(
     override fun equals(other: Any?): Boolean {
         if (other !is Category) return false
         if (this === other) return true
-        return this.name == other.name
+        return this.slug == other.slug
     }
 
-    override fun hashCode(): Int = this.name.hashCode()
+    override fun hashCode(): Int = this.slug.hashCode()
 }

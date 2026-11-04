@@ -1,7 +1,8 @@
 package fatum.catalog.dto.mapper
 
-import fatum.catalog.dto.CreateFullUnavailability
-import fatum.catalog.dto.CreateUnavailability
+import fatum.catalog.dto.request.schedule.CreateFullUnavailability
+import fatum.catalog.dto.request.schedule.CreateUnavailability
+import fatum.catalog.dto.response.schedule.Unavailability
 import fatum.catalog.model.ProviderUnavailableRange
 
 fun CreateUnavailability.toEntity(): ProviderUnavailableRange {
@@ -20,3 +21,12 @@ fun CreateFullUnavailability.toEntity(): ProviderUnavailableRange {
         end
     )
 }
+
+fun ProviderUnavailableRange.toResponse() =
+    Unavailability(
+        this.id,
+        this.providerId,
+        this.reason,
+        this.startDate,
+        this.finalDate
+    )

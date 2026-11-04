@@ -1,9 +1,9 @@
 package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.ChangeUnavailabilitySchedule
-import fatum.catalog.dto.CreateFullUnavailability
-import fatum.catalog.dto.CreateUnavailability
+import fatum.catalog.dto.request.schedule.ChangeUnavailabilitySchedule
+import fatum.catalog.dto.request.schedule.CreateFullUnavailability
+import fatum.catalog.dto.request.schedule.CreateUnavailability
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
@@ -69,6 +69,8 @@ class ProviderUnavailableRangeService(
             !unavailability.startDate.isAfter(date) && !unavailability.finalDate.isBefore(date)
         }
 
+
+
     @Transactional
     fun deleteUnavailability(id: String){
         unavailableRangeRepository.delete(getUnavailability(id))
@@ -123,5 +125,7 @@ class ProviderUnavailableRangeService(
         pendingOrders.forEach { it.changeStatus(OrderStatus.REJECTED, "Provider marked as unavailable") }
         orderRepository.saveAll(pendingOrders)
     }
+
+
 
 }

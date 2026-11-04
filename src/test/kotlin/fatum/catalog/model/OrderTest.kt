@@ -24,6 +24,8 @@ class OrderTest {
         catalogItem = CatalogItem(
             providerId = "provider-123",
             title = "Reparacion De Tuberias",
+            providerName = "Provider Test",
+            providerUsername = "providertest",
             priceType = PriceType.FIXED,
             jobType = JobType.PRESENCIAL,
             category = category,
@@ -34,7 +36,8 @@ class OrderTest {
 
     private fun createOrder(
         clientId: String = "client-456",
-        clientName: String = "juanperez",
+        clientName: String = "Juan Perez",
+        clientUsername: String = "juanperez",
         booking: LocalDateTime = LocalDateTime.of(2026, 11, 15, 10, 0),
         item: CatalogItem = catalogItem,
         negotiatedPrice: BigDecimal = item.basePrice,
@@ -47,6 +50,7 @@ class OrderTest {
     ) = Order(
         clientId = clientId,
         clientName = clientName,
+        clientUsername = clientUsername,
         booking = booking,
         catalogItem = item,
         negotiatedPrice = negotiatedPrice,
@@ -74,7 +78,8 @@ class OrderTest {
 
             assertAll(
                 { assertEquals("client-456", order.clientId) },
-                { assertEquals("juanperez", order.clientName) },
+                { assertEquals("Juan Perez", order.clientName) },
+                { assertEquals("juanperez", order.clientUsername) },
                 { assertEquals("provider-123", order.providerId) },
                 { assertEquals(BigDecimal(100), order.negotiatedPrice) },
                 { assertEquals(60, order.estimatedTime) },

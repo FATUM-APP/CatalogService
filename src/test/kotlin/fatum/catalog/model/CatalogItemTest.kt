@@ -29,6 +29,8 @@ class CatalogItemTest {
     ) = CatalogItem(
         providerId = providerId,
         title = title,
+        providerName = "Provider Test",
+        providerUsername = "providertest",
         priceType = priceType,
         jobType = jobType,
         category = category,
@@ -86,6 +88,8 @@ class CatalogItemTest {
                 val item = CatalogItem(
                     providerId = "123",
                     title = "Mi servicio",
+                    providerName = "Provider Test",
+                    providerUsername = "providertest",
                     priceType = PriceType.HOURLY,
                     jobType = JobType.PRESENCIAL,
                     category = category,

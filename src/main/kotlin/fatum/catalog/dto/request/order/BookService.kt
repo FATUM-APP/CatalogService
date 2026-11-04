@@ -1,4 +1,4 @@
-package fatum.catalog.dto
+package fatum.catalog.dto.request.order
 
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException

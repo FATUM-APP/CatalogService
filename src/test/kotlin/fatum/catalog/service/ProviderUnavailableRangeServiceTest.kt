@@ -3,9 +3,9 @@ package fatum.catalog.service
 import fatum.catalog.client.AddressDTO
 import fatum.catalog.client.M2User
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.ChangeUnavailabilitySchedule
-import fatum.catalog.dto.CreateFullUnavailability
-import fatum.catalog.dto.CreateUnavailability
+import fatum.catalog.dto.request.schedule.ChangeUnavailabilitySchedule
+import fatum.catalog.dto.request.schedule.CreateFullUnavailability
+import fatum.catalog.dto.request.schedule.CreateUnavailability
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -46,12 +46,14 @@ class ProviderUnavailableRangeServiceTest {
 
     private val validUser = M2User(
         userId = "provider-123",
+        name = "Juan Pro",
+        userName = "juanpro",
         birthDate = LocalDate.of(1990, 1, 1),
         isProfessional = true,
         isVerified = true,
         isActive = true,
         gender = "M",
-        principalAddress = AddressDTO("Calle 1", "Casa", "Bogota", "Cundinamarca", "Colombia", "juanpro")
+        principalAddress = AddressDTO("Calle 1", "Casa", "Bogota", "Cundinamarca", "Colombia")
     )
 
     private val nonProfessionalUser = validUser.copy(isProfessional = false)
@@ -75,10 +77,11 @@ class ProviderUnavailableRangeServiceTest {
         val cat = Category("TestCat", SchedulingModel.SINGLE_SESSION)
         val item = CatalogItem(
             providerId = "provider-123", title = "Test Service",
+            providerName = "Provider Test", providerUsername = "providertest",
             priceType = PriceType.FIXED, jobType = JobType.PRESENCIAL, category = cat
         )
         return Order(
-            clientId = "client-1", clientName = "testclient",
+            clientId = "client-1", clientName = "Test Client", clientUsername = "testclient",
             booking = booking, catalogItem = item,
             negotiatedPrice = BigDecimal.ZERO,
             deliveryCity = "Bogota", deliveryState = "Cundinamarca",

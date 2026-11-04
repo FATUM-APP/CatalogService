@@ -3,6 +3,8 @@ package fatum.catalog.service
 import fatum.catalog.client.M2User
 import fatum.catalog.client.AddressDTO
 import fatum.catalog.client.UserServiceClient
+import fatum.catalog.dto.request.schedule.ChangeAvailability
+import fatum.catalog.dto.request.schedule.FullAvailability
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.ProviderAvailability
@@ -33,12 +35,14 @@ class ProviderAvailabilityServiceTest {
 
     private val validUser = M2User(
         userId = "provider-123",
+        name = "Juan Provider",
+        userName = "juanpro",
         birthDate = LocalDate.of(1990, 1, 1),
         isProfessional = true,
         isVerified = true,
         isActive = true,
         gender = "M",
-        principalAddress = AddressDTO("Calle 1", "Casa", "Bogota", "Cundinamarca", "Colombia", "juanpro")
+        principalAddress = AddressDTO("Calle 1", "Casa", "Bogota", "Cundinamarca", "Colombia")
     )
 
     private val nonProfessionalUser = validUser.copy(isProfessional = false)
@@ -95,7 +99,12 @@ class ProviderAvailabilityServiceTest {
             whenever(providerAvailabilityRepository.save(any<ProviderAvailability>()))
                 .thenAnswer { it.arguments[0] }
 
-            service.changeSchedule("provider-123", DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
+            service.changeSchedule(ChangeAvailability(
+                _providerId = "provider-123",
+                day = DayOfWeek.MONDAY,
+                start = LocalTime.of(9, 0),
+                end = LocalTime.of(18, 0)
+            ))
 
             assertAll(
                 { assertEquals(LocalTime.of(9, 0), existing.initialTime) },
@@ -112,7 +121,12 @@ class ProviderAvailabilityServiceTest {
             whenever(providerAvailabilityRepository.save(any<ProviderAvailability>()))
                 .thenAnswer { it.arguments[0] }
 
-            service.changeSchedule("provider-123", DayOfWeek.SATURDAY, LocalTime.of(10, 0), LocalTime.of(14, 0))
+            service.changeSchedule(ChangeAvailability(
+                _providerId = "provider-123",
+                day = DayOfWeek.SATURDAY,
+                start = LocalTime.of(10, 0),
+                end = LocalTime.of(14, 0)
+            ))
 
             verify(providerAvailabilityRepository).save(any())
         }
@@ -122,7 +136,12 @@ class ProviderAvailabilityServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(nonProfessionalUser)
 
             val ex = assertThrows<FatumServiceException> {
-                service.changeSchedule("provider-123", DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
+                service.changeSchedule(ChangeAvailability(
+                    _providerId = "provider-123",
+                    day = DayOfWeek.MONDAY,
+                    start = LocalTime.of(9, 0),
+                    end = LocalTime.of(18, 0)
+                ))
             }
 
             assertEquals(CatalogErrorCode.NOT_A_PROFESSIONAL, ex.errorCode)
@@ -143,7 +162,10 @@ class ProviderAvailabilityServiceTest {
             whenever(providerAvailabilityRepository.save(any<ProviderAvailability>()))
                 .thenAnswer { it.arguments[0] }
 
-            service.fullDayAvailability("provider-123", DayOfWeek.WEDNESDAY)
+            service.fullDayAvailability(FullAvailability(
+                _providerId = "provider-123",
+                day = DayOfWeek.WEDNESDAY
+            ))
 
             assertAll(
                 { assertEquals(LocalTime.of(0, 0), existing.initialTime) },
@@ -160,7 +182,10 @@ class ProviderAvailabilityServiceTest {
             whenever(providerAvailabilityRepository.save(any<ProviderAvailability>()))
                 .thenAnswer { it.arguments[0] }
 
-            service.fullDayAvailability("provider-123", DayOfWeek.SUNDAY)
+            service.fullDayAvailability(FullAvailability(
+                _providerId = "provider-123",
+                day = DayOfWeek.SUNDAY
+            ))
 
             verify(providerAvailabilityRepository).save(any())
         }
@@ -170,7 +195,10 @@ class ProviderAvailabilityServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(inactiveUser)
 
             val ex = assertThrows<FatumServiceException> {
-                service.fullDayAvailability("provider-123", DayOfWeek.MONDAY)
+                service.fullDayAvailability(FullAvailability(
+                    _providerId = "provider-123",
+                    day = DayOfWeek.MONDAY
+                ))
             }
 
             assertEquals(CatalogErrorCode.INVALID_USER, ex.errorCode)

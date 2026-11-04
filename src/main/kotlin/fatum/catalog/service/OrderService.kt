@@ -1,8 +1,8 @@
 package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.BookService
-import fatum.catalog.dto.OrderResponse
+import fatum.catalog.dto.request.order.BookService
+import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
@@ -25,7 +25,7 @@ class OrderService(
     private val orderRepository: OrderRepository,
     private val providerAvailabilityService: ProviderAvailabilityService,
     private val providerUnavailableRangeService: ProviderUnavailableRangeService,
-    private val catalogItemService: CatalogItemService
+    private val catalogItemService: CatalogItemService,
 ) {
     private val gapTime: Int = 30
 
@@ -65,6 +65,8 @@ class OrderService(
         order.changeStatus(response.status, response.reason)
         order.estimatedTime = response.estimatedTime
         orderRepository.save(order)
+
+
     }
 
     //==========================================CANCEL============================================================
@@ -136,8 +138,8 @@ class OrderService(
         val order = getOrder(orderId)
         if (order.status != OrderStatus.DELIVERING)
             throw FatumServiceException(CatalogErrorCode.DELIVERING_NOT_CONFIRMED)
-        validateNotResponded(order.completionConfirmation, party)
 
+        validateNotResponded(order.completionConfirmation, party)
         order.completionConfirmation.deny(party)
 
         if (order.completionConfirmation.isContradicted)
@@ -199,6 +201,13 @@ class OrderService(
         if (status != null) orderRepository.findByClientIdAndStatus(clientId, status)
         else orderRepository.findByClientId(clientId)
 
+    @Transactional(readOnly = true)
+    fun findActiveOrders(
+        providerId: String,
+        start: LocalDateTime,
+        end: LocalDateTime
+    ) : List<Order> = getActiveOrders(providerId, start, end)
+
     //==========================================HELPERS============================================================
 
     private fun getService(serviceId: String) = catalogItemService.findById(serviceId, ServiceStatus.ACTIVE)
@@ -242,4 +251,20 @@ class OrderService(
     private fun timeGapPolicy(time1: LocalDateTime, time2: LocalDateTime): Boolean {
         return Duration.between(time1, time2).abs().toMinutes() < gapTime
     }
+
+    private fun getActiveOrders(
+        providerId: String,
+        start: LocalDateTime,
+        end: LocalDateTime
+    ): List<Order> {
+
+        val accepted = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            providerId, OrderStatus.ACCEPTED, start, end
+        )
+        val delivering = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            providerId, OrderStatus.DELIVERING, start, end
+        )
+        return accepted + delivering
+    }
+
 }

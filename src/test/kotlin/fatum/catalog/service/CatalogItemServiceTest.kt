@@ -1,7 +1,11 @@
 package fatum.catalog.service
 
-import fatum.catalog.dto.CreateServiceRequest
-import fatum.catalog.dto.UpdateServiceRequest
+import fatum.catalog.client.AddressDTO
+import fatum.catalog.client.M2User
+import fatum.catalog.client.UserServiceClient
+import fatum.catalog.dto.request.item.ActivateCatalogItem
+import fatum.catalog.dto.request.item.CreateServiceRequest
+import fatum.catalog.dto.request.item.UpdateServiceRequest
 import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
@@ -24,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -31,6 +36,7 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.web.multipart.MultipartFile
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.util.Optional
 
 @ExtendWith(MockitoExtension::class)
@@ -39,13 +45,14 @@ class CatalogItemServiceTest {
     @Mock lateinit var catalogItemRepository: CatalogItemRepository
     @Mock lateinit var categoryService: CategoryService
     @Mock lateinit var fileStorageClient: FileStorageClient
+    @Mock lateinit var userServiceClient: UserServiceClient
 
     private lateinit var service: CatalogItemService
     private lateinit var category: Category
 
     @BeforeEach
     fun setUp() {
-        service = CatalogItemService(catalogItemRepository, categoryService, fileStorageClient, "test-route")
+        service = CatalogItemService(catalogItemRepository, categoryService, fileStorageClient, "test-route", userServiceClient)
         category = Category("Plomeria", SchedulingModel.SINGLE_SESSION)
     }
 
@@ -57,7 +64,16 @@ class CatalogItemServiceTest {
         cat: Category = this.category
     ) = CatalogItem(
         providerId = providerId, title = title,
+        providerName = "Provider Test",
+        providerUsername = "providertest",
         priceType = priceType, jobType = jobType, category = cat
+    )
+
+    private fun validProvider(userId: String = "provider-123") = M2User(
+        userId = userId, name = "Provider Test", userName = "providertest",
+        birthDate = LocalDate.of(1990, 1, 1),
+        isProfessional = true, isVerified = true, isActive = true, gender = "M",
+        principalAddress = AddressDTO("Calle 123", "Casa", "Bogota", "Cundinamarca", "Colombia")
     )
 
     private fun validImage(): MultipartFile {
@@ -128,8 +144,9 @@ class CatalogItemServiceTest {
                 category = "Plomeria"
             )
             val category = Category("Plomeria", SchedulingModel.SINGLE_SESSION)
+            val provider = validProvider(userId = "provider-1")
 
-            val entity = request.toEntity(emptyList(), category)
+            val entity = request.toEntity(emptyList(), category, provider)
 
             assertAll(
                 { assertEquals("provider-1", entity.providerId) },
@@ -153,7 +170,9 @@ class CatalogItemServiceTest {
                 providerId = "provider-123", title = "Mi Servicio",
                 priceType = PriceType.FIXED, category = "Plomeria"
             )
+            val provider = validProvider()
 
+            whenever(userServiceClient.getUserById("provider-123")).thenReturn(provider)
             whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
                 .thenReturn(false)
             whenever(catalogItemRepository.existsByTitleAndProviderIdIgnoreCase("Mi Servicio", "provider-123"))
@@ -161,16 +180,18 @@ class CatalogItemServiceTest {
             whenever(fileStorageClient.upload(any<MultipartFile>(), eq("test-route")))
                 .thenReturn(uploadResult())
             whenever(categoryService.findCategory("Plomeria", true)).thenReturn(category)
-            whenever(catalogItemRepository.save(any<CatalogItem>())).thenAnswer { it.arguments[0] }
+            val captor = argumentCaptor<CatalogItem>()
+            whenever(catalogItemRepository.save(captor.capture())).thenAnswer { it.arguments[0] }
 
-            val result = service.createCatalogItem(request, listOf(image))
+            service.createCatalogItem(request, listOf(image))
 
+            val saved = captor.firstValue
             assertAll(
-                { assertEquals("Mi Servicio", result.title) },
-                { assertEquals("provider-123", result.providerId) },
-                { assertEquals(PriceType.FIXED, result.priceType) },
-                { assertEquals(category, result.category) },
-                { assertEquals(1, result.serviceCatalog.size) }
+                { assertEquals("Mi Servicio", saved.title) },
+                { assertEquals("provider-123", saved.providerId) },
+                { assertEquals(PriceType.FIXED, saved.priceType) },
+                { assertEquals(category, saved.category) },
+                { assertEquals(1, saved.serviceCatalog.size) }
             )
             verify(catalogItemRepository).save(any())
             verify(fileStorageClient).upload(any<MultipartFile>(), eq("test-route"))
@@ -181,6 +202,8 @@ class CatalogItemServiceTest {
             val request = CreateServiceRequest(
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
+
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
 
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, emptyList())
@@ -196,6 +219,8 @@ class CatalogItemServiceTest {
             val request = CreateServiceRequest(
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
+
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
 
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, images)
@@ -213,6 +238,8 @@ class CatalogItemServiceTest {
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
 
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
+
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, listOf(image))
             }
@@ -229,6 +256,8 @@ class CatalogItemServiceTest {
             val request = CreateServiceRequest(
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
+
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
 
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, listOf(image))
@@ -248,6 +277,8 @@ class CatalogItemServiceTest {
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
 
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
+
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, listOf(image))
             }
@@ -266,6 +297,8 @@ class CatalogItemServiceTest {
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"
             )
 
+            whenever(userServiceClient.getUserById("p")).thenReturn(validProvider(userId = "p"))
+
             val ex = assertThrows<FatumServiceException> {
                 service.createCatalogItem(request, listOf(image))
             }
@@ -281,6 +314,7 @@ class CatalogItemServiceTest {
                 priceType = PriceType.FIXED, category = "Plomeria"
             )
 
+            whenever(userServiceClient.getUserById("provider-123")).thenReturn(validProvider())
             whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
                 .thenReturn(true)
 
@@ -300,6 +334,7 @@ class CatalogItemServiceTest {
                 priceType = PriceType.FIXED, category = "Plomeria"
             )
 
+            whenever(userServiceClient.getUserById("provider-123")).thenReturn(validProvider())
             whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
                 .thenReturn(false)
             whenever(catalogItemRepository.existsByTitleAndProviderIdIgnoreCase("Mi Servicio", "provider-123"))
@@ -477,7 +512,7 @@ class CatalogItemServiceTest {
         fun `should filter catalog with multiple criteria`() {
             val item = createItem()
             whenever(catalogItemRepository.filterCatalog(
-                PriceType.FIXED, BigDecimal(10), BigDecimal(100), true, ServiceStatus.ACTIVE, true
+                PriceType.FIXED, BigDecimal(10), BigDecimal(100), true, ServiceStatus.ACTIVE, null, true
             )).thenReturn(listOf(item))
 
             val result = service.filterCatalog(
@@ -495,7 +530,7 @@ class CatalogItemServiceTest {
         fun `should find all items without filters`() {
             val item = createItem()
             whenever(catalogItemRepository.filterCatalog(
-                null, BigDecimal.ZERO, null, null, null, true
+                null, BigDecimal.ZERO, null, null, null, null, true
             )).thenReturn(listOf(item))
 
             val result = service.findAll()
@@ -506,7 +541,7 @@ class CatalogItemServiceTest {
         @Test
         fun `should return empty list when no items match`() {
             whenever(catalogItemRepository.filterCatalog(
-                PriceType.HOURLY, BigDecimal(999), null, null, ServiceStatus.ACTIVE, true
+                PriceType.HOURLY, BigDecimal(999), null, null, ServiceStatus.ACTIVE, null, true
             )).thenReturn(emptyList())
 
             val result = service.filterCatalog(
@@ -630,7 +665,7 @@ class CatalogItemServiceTest {
             whenever(catalogItemRepository.findById("item-1")).thenReturn(Optional.of(item))
             whenever(catalogItemRepository.save(any<CatalogItem>())).thenAnswer { it.arguments[0] }
 
-            service.deactivate("item-1")
+            service.deactivate(ActivateCatalogItem("item-1"))
 
             assertEquals(ServiceStatus.INACTIVE, item.status)
             verify(catalogItemRepository).save(item)
@@ -644,7 +679,7 @@ class CatalogItemServiceTest {
             whenever(catalogItemRepository.findById("item-1")).thenReturn(Optional.of(item))
             whenever(catalogItemRepository.save(any<CatalogItem>())).thenAnswer { it.arguments[0] }
 
-            service.activate("item-1")
+            service.activate(ActivateCatalogItem("item-1"))
 
             assertEquals(ServiceStatus.ACTIVE, item.status)
             verify(catalogItemRepository).save(item)
@@ -655,7 +690,7 @@ class CatalogItemServiceTest {
             whenever(catalogItemRepository.findById("item-999")).thenReturn(Optional.empty())
 
             val ex = assertThrows<FatumServiceException> {
-                service.deactivate("item-999")
+                service.deactivate(ActivateCatalogItem("item-999"))
             }
 
             assertEquals(CatalogErrorCode.SERVICE_NOT_FOUND, ex.errorCode)

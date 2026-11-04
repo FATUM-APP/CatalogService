@@ -1,10 +1,10 @@
-package fatum.catalog.dto
+package fatum.catalog.dto.request.order
 
 import fatum.catalog.model.constant.OrderStatus
 import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Size
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.PositiveOrZero
+import jakarta.validation.constraints.Size
 
 data class OrderResponse(
     @field:NotBlank(message = "Order id is required")

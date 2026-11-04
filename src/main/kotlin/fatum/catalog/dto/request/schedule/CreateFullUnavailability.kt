@@ -1,4 +1,4 @@
-package fatum.catalog.dto
+package fatum.catalog.dto.request.schedule
 
 import jakarta.validation.constraints.NotBlank
 import java.time.LocalDate
