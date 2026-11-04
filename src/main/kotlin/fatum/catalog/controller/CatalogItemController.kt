@@ -53,31 +53,31 @@ class CatalogItemController(
             (catalogItemService.findById(id, ServiceStatus.ACTIVE).toDto())
         )
 
-    @GetMapping
+    @GetMapping(params = ["title"])
     fun getByTitle(@RequestParam title: String): ResponseEntity<List<ItemResponse>> =
         ResponseEntity.status(HttpStatus.OK).body(
             catalogItemService.findByTitle(title).map { it.toDto() }
         )
 
-    @GetMapping
+    @GetMapping(params = ["keyword"])
     fun getByTitleContaining(@RequestParam keyword: String): ResponseEntity<List<ItemResponse>> =
         ResponseEntity.status(HttpStatus.OK).body(
             catalogItemService.findByTitleContaining(keyword).map { it.toDto() }
         )
 
-    @GetMapping
+    @GetMapping(params = ["prefix"])
     fun getByTitleStartingWith(@RequestParam prefix: String): ResponseEntity<List<ItemResponse>> =
         ResponseEntity.status(HttpStatus.OK).body(
             catalogItemService.findByTitleStartingWith(prefix).map { it.toDto() }
         )
 
-    @GetMapping
-    fun searchInCatalog(@RequestParam keyword: String): ResponseEntity<List<ItemResponse>> =
+    @GetMapping(params = ["filterKeyword"])
+    fun searchInCatalog(@RequestParam filterKeyword: String): ResponseEntity<List<ItemResponse>> =
         ResponseEntity.status(HttpStatus.OK).body(
-            catalogItemService.searchInCatalog(keyword, ServiceStatus.ACTIVE).map { it.toDto() }
+            catalogItemService.searchInCatalog(filterKeyword, ServiceStatus.ACTIVE).map { it.toDto() }
         )
 
-    @GetMapping
+    @GetMapping(params = ["priceType", "minPrice", "maxPrice", "isNegotiable", "categoryName"])
     fun filterCatalog(
         @RequestParam(required = false) priceType: PriceType?,
         @RequestParam(required = false, defaultValue = "0") minPrice: BigDecimal?,

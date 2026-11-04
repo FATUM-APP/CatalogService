@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import java.time.Year
 import java.time.YearMonth
@@ -29,13 +30,13 @@ class UnavailabilityController(
 
     //==========================================CREATE==============================================
     @PostMapping("/create")
-    fun createUnavailability(request : CreateUnavailability) : ResponseEntity<Void>{
+    fun createUnavailability(@RequestBody request : CreateUnavailability) : ResponseEntity<Void>{
         unavailabilityService.establishUnavailability(request)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
 
     @PostMapping("/create/full")
-    fun createFullUnavailability(request : CreateFullUnavailability) : ResponseEntity<Void>{
+    fun createFullUnavailability(@RequestBody request : CreateFullUnavailability) : ResponseEntity<Void>{
         unavailabilityService.establishFullUnavailability(request)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
@@ -43,7 +44,7 @@ class UnavailabilityController(
     //==========================================READ==============================================
 
 
-    @GetMapping
+    @GetMapping(params = ["providerId"])
     fun getProviderUnavailability(
         @RequestParam providerId : String
     ) : ResponseEntity<List<Unavailability>> =
@@ -51,7 +52,7 @@ class UnavailabilityController(
             unavailabilityService.findProviderUnavailableRanges(providerId).map { it.toResponse() }
         )
 
-    @GetMapping
+    @GetMapping(params = ["providerId", "month"])
     fun getProviderUnavailabilityByMonth(
         @RequestParam providerId : String,
         @RequestParam month : YearMonth
@@ -64,7 +65,7 @@ class UnavailabilityController(
     //==========================================UPDATE==============================================
 
     @PutMapping("/reschedule")
-    fun changeUnavailability(request : ChangeUnavailabilitySchedule) : ResponseEntity<Void> {
+    fun changeUnavailability(@RequestBody request : ChangeUnavailabilitySchedule) : ResponseEntity<Void> {
         unavailabilityService.changeUnavailabilitySchedule(request)
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build()
     }

@@ -56,7 +56,7 @@ class AvailabilityController(
 
     //==========================================READ==============================================
 
-    @GetMapping
+    @GetMapping(params = ["providerId", "day"])
     fun getAvailability(
         @RequestParam providerId : String,
         @RequestParam day : DayOfWeek
@@ -65,10 +65,9 @@ class AvailabilityController(
             .body(availabilityService.findAvailability(providerId, day)
                 .toResponse())
 
-    @GetMapping
+    @GetMapping(params = ["providerId"])
     fun getProviderAvailability(
         @RequestParam providerId : String,
-        @RequestParam day : DayOfWeek
     ) :  ResponseEntity<List<Availability>> =
         ResponseEntity.status(HttpStatus.OK)
             .body(availabilityService.findAvailabilityByProvider(providerId)

@@ -20,8 +20,7 @@ fun Category.toResponse() : CategoryResponse =
     CategoryResponse(
         name = name,
         slug = slug,
-        parent = parent?.toResponse(),
-        subcategories = subcategories.mapTo(mutableSetOf()) { it.toResponse() },
+        parentSlug = parent?.slug,
         schedulingModel = schedulingModel.name,
         isAble = isAble
     )

@@ -1,6 +1,7 @@
 package fatum.catalog.service
 
 
+import fatum.catalog.dto.request.category.CreateCategoryRequest
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -48,10 +49,15 @@ class CategoryServiceTest {
     inner class CreateCategory {
         @Test
         fun `createRoot should throw CATEGORY_EXISTS when name already exists`() {
-            whenever(repository.existsByNameIgnoreCase("belleza")).thenReturn(true)
+            whenever(repository.existsByNameIgnoreCase("Belleza")).thenReturn(true)
+
+            val request = CreateCategoryRequest(
+                name = "belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
 
             val exception = assertThrows<FatumServiceException> {
-                service.createRoot("belleza", SchedulingModel.SINGLE_SESSION)
+                service.createRoot(request)
             }
 
             assertEquals(CatalogErrorCode.CATEGORY_EXISTS, exception.errorCode)
@@ -60,10 +66,16 @@ class CategoryServiceTest {
 
         @Test
         fun `createSubCategory should throw CATEGORY_EXISTS when name already exists`() {
-            whenever(repository.existsByNameIgnoreCase("uñas")).thenReturn(true)
+            whenever(repository.existsByNameIgnoreCase("Uñas")).thenReturn(true)
+
+            val request = CreateCategoryRequest(
+                name = "uñas",
+                _parent = "belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
 
             val exception = assertThrows<FatumServiceException> {
-                service.createSubCategory("uñas", "belleza")
+                service.createSubCategory(request)
             }
 
             assertEquals(CatalogErrorCode.CATEGORY_EXISTS, exception.errorCode)
@@ -75,8 +87,14 @@ class CategoryServiceTest {
             whenever(repository.existsByNameIgnoreCase("Uñas")).thenReturn(false)
             whenever(repository.findByNameIgnoreCase("Belleza")).thenReturn(null)
 
+            val request = CreateCategoryRequest(
+                name = "Uñas",
+                _parent = "Belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
+
             val exception = assertThrows<FatumServiceException> {
-                service.createSubCategory("Uñas", "Belleza")
+                service.createSubCategory(request)
             }
 
             assertEquals(CatalogErrorCode.CATEGORY_NOT_FOUND, exception.errorCode)
@@ -92,12 +110,15 @@ class CategoryServiceTest {
             val captor = argumentCaptor<Category>()
             whenever(repository.save(captor.capture())).thenAnswer { it.arguments[0] }
 
-            val savedCategory = service.createRoot(
-                "Belleza",SchedulingModel.SINGLE_SESSION
+            val request = CreateCategoryRequest(
+                name = "Belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
             )
+            service.createRoot(request)
 
-            assertEquals("Belleza", savedCategory.name)
-            assertEquals(SchedulingModel.SINGLE_SESSION, savedCategory.schedulingModel)
+            val saved = captor.firstValue
+            assertEquals("Belleza", saved.name)
+            assertEquals(SchedulingModel.SINGLE_SESSION, saved.schedulingModel)
             verify(repository).save(any())
             verify(repository).existsByNameIgnoreCase("Belleza")
         }
@@ -110,11 +131,17 @@ class CategoryServiceTest {
             val captor = argumentCaptor<Category>()
             whenever(repository.save(captor.capture())).thenAnswer { it.arguments[0] }
 
-            val savedCategory = service.createSubCategory("Uñas", "Belleza")
+            val request = CreateCategoryRequest(
+                name = "Uñas",
+                _parent = "Belleza",
+                schedulingModel = SchedulingModel.SINGLE_SESSION
+            )
+            service.createSubCategory(request)
 
+            val saved = captor.firstValue
             verify(repository).findByNameIgnoreCase("Belleza")
-            assertEquals(belleza, savedCategory.parent)
-            assertContains(belleza.subcategories, savedCategory)
+            assertEquals(belleza, saved.parent)
+            assertContains(belleza.subcategories, saved)
             verify(repository).save(any())
             verify(repository).existsByNameIgnoreCase("Uñas")
         }

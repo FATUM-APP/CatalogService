@@ -12,6 +12,7 @@ import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -27,12 +28,12 @@ class CategoryController(
     //==========================================CREATE==============================================
 
     @PostMapping("/create/root")
-    fun createRoot(request : CreateCategoryRequest) : ResponseEntity<Void> {
+    fun createRoot(@RequestBody request : CreateCategoryRequest) : ResponseEntity<Void> {
         categoryService.createRoot(request)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
     @PostMapping("/create/sub")
-    fun createSub(request : CreateCategoryRequest) : ResponseEntity<Void> {
+    fun createSub(@RequestBody request : CreateCategoryRequest) : ResponseEntity<Void> {
         categoryService.createSubCategory(request)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
