@@ -72,7 +72,7 @@ class CategoryController(
     fun getAllRootCategories() : ResponseEntity<List<CategoryResponse>> =
         ResponseEntity.status(HttpStatus.OK)
             .body(categoryService.searchRootCategories(true)
-                .map { it.toResponse(categoryService.getCategoryLogoUrl(it)})
+                .map { it.toResponse(categoryService.getCategoryLogoUrl(it)) })
 
     @GetMapping("/subs")
     fun getAllSubCategories(
