@@ -13,23 +13,42 @@ import fatum.catalog.model.constant.ServiceStatus
 import fatum.catalog.repository.CategoryRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import io.github.fatumapp.storage.FileStorageClient
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.web.multipart.MultipartFile
 
 @Service
 class CategoryService(
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val fileStorageClient: FileStorageClient,
+    @Value("\${catalog.categories.logo-route}") private val logoStorageRoute: String,
 ) {
 
+    companion object {
+        private const val MAX_LOGO_SIZE = 3L * 1024 * 1024
+        private val ALLOWED_IMAGE_TYPES = setOf("image/jpeg", "image/png", "image/webp")
+    }
+
+
     @Transactional
-    fun createRoot(request : CreateCategoryRequest){
-        val category = request.toRoot()
+    fun createRoot(request: CreateCategoryRequest, logo: MultipartFile?) {
+        val logoKey = logo?.let {
+            validateLogoImage(it)
+            fileStorageClient.upload(it, logoStorageRoute).key
+        }
+        val category = request.toRoot(logoKey)
         if (categoryRepository.existsByNameIgnoreCase(category.name))
             throw FatumServiceException(CatalogErrorCode.CATEGORY_EXISTS)
         categoryRepository.save(category)
     }
 
     @Transactional
-    fun createSubCategory(request : CreateCategoryRequest){
-        val subcategory = request.toSubcategory(getCategory(request.parent ?: ""))
+    fun createSubCategory(request: CreateCategoryRequest, logo: MultipartFile?) {
+        val logoKey = logo?.let {
+            validateLogoImage(it)
+            fileStorageClient.upload(it, logoStorageRoute).key
+        }
+        val subcategory = request.toSubcategory(getCategory(request.parent ?: ""), logoKey)
         if (categoryRepository.existsByNameIgnoreCase(subcategory.name))
             throw FatumServiceException(CatalogErrorCode.CATEGORY_EXISTS)
 
@@ -97,5 +116,27 @@ class CategoryService(
         else categoryRepository.findByNameIgnoreCaseAndIsAble(name, isAble))
             ?: throw FatumServiceException(CatalogErrorCode.CATEGORY_NOT_FOUND)
 
+    //=================================== LOGO =====================================================
+
+    @Transactional
+    fun updateLogo(name: String, image: MultipartFile) {
+        val category = getCategory(name)
+        validateLogoImage(image)
+        category.logoKey?.let { fileStorageClient.delete(logoStorageRoute, it) }
+        val uploaded = fileStorageClient.upload(image, logoStorageRoute)
+        category.logoKey = uploaded.key
+        categoryRepository.save(category)
+    }
+
+    fun getCategoryLogoUrl(category: Category): String? =
+        category.logoKey?.let { fileStorageClient.presignedUrl(logoStorageRoute, it) }
+
+    private fun validateLogoImage(image: MultipartFile) {
+        if (image.isEmpty) throw FatumServiceException(CatalogErrorCode.INVALID_IMAGE)
+        if (image.size > MAX_LOGO_SIZE) throw FatumServiceException(CatalogErrorCode.IMAGE_TOO_LARGE)
+        val contentType = image.contentType?.lowercase()
+        if (contentType == null || contentType !in ALLOWED_IMAGE_TYPES)
+            throw FatumServiceException(CatalogErrorCode.INVALID_IMAGE_FORMAT)
+    }
 
 }

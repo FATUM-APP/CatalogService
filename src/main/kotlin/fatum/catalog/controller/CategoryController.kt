@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.http.MediaType
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestPart
+import org.springframework.web.multipart.MultipartFile
 
 
 @RestController
@@ -27,14 +31,21 @@ class CategoryController(
 
     //==========================================CREATE==============================================
 
-    @PostMapping("/create/root")
-    fun createRoot(@RequestBody request : CreateCategoryRequest) : ResponseEntity<Void> {
-        categoryService.createRoot(request)
+    @PostMapping("/create/root", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun createRoot(
+        @RequestPart("request") request: CreateCategoryRequest,
+        @RequestPart("logo", required = false) logo: MultipartFile?
+    ): ResponseEntity<Void> {
+        categoryService.createRoot(request, logo)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
-    @PostMapping("/create/sub")
-    fun createSub(@RequestBody request : CreateCategoryRequest) : ResponseEntity<Void> {
-        categoryService.createSubCategory(request)
+
+    @PostMapping("/create/sub", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun createSub(
+        @RequestPart("request") request: CreateCategoryRequest,
+        @RequestPart("logo", required = false) logo: MultipartFile?
+    ): ResponseEntity<Void> {
+        categoryService.createSubCategory(request, logo)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
 
@@ -43,9 +54,12 @@ class CategoryController(
     @GetMapping("/{name}")
     fun getCategory(
         @PathVariable name: String
-    ) : ResponseEntity<CategoryResponse> =
-        ResponseEntity.status(HttpStatus.OK)
-            .body(categoryService.findCategory(name,true).toResponse())
+    ): ResponseEntity<CategoryResponse> {
+        val category = categoryService.findCategory(name, true)
+        return ResponseEntity.ok(
+            category.toResponse(categoryService.getCategoryLogoUrl(category))
+        )
+    }
 
     @GetMapping("/services")
     fun getCategoryServices(
@@ -58,7 +72,7 @@ class CategoryController(
     fun getAllRootCategories() : ResponseEntity<List<CategoryResponse>> =
         ResponseEntity.status(HttpStatus.OK)
             .body(categoryService.searchRootCategories(true)
-                .map { it.toResponse() })
+                .map { it.toResponse(categoryService.getCategoryLogoUrl(it)})
 
     @GetMapping("/subs")
     fun getAllSubCategories(
@@ -66,10 +80,20 @@ class CategoryController(
     ) : ResponseEntity<List<CategoryResponse>> =
         ResponseEntity.status(HttpStatus.OK)
             .body(categoryService.searchSubCategories(root,true)
-                .map { it.toResponse() })
+                .map { it.toResponse(categoryService.getCategoryLogoUrl(it)) })
 
 
 
+    //==========================================UPDATE==============================================
+
+    @PutMapping("/{name}/logo", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
+    fun updateLogo(
+        @PathVariable name: String,
+        @RequestPart("image") image: MultipartFile
+    ): ResponseEntity<Void> {
+        categoryService.updateLogo(name, image)
+        return ResponseEntity.ok().build()
+    }
 
 
 }

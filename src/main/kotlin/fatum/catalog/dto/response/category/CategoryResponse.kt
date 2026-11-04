@@ -5,5 +5,6 @@ data class CategoryResponse(
     val slug: String,
     val parentSlug: String? = null,
     val schedulingModel: String,
-    val isAble: Boolean
+    val isAble: Boolean,
+    val logoUrl: String? = null
 )

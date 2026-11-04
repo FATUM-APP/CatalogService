@@ -25,3 +25,5 @@ fatum:
 catalog:
   images:
     storage-route: catalog-service:photo
+  categories:
+    logo-route: catalog-service:category-logo
