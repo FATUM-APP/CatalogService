@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 
@@ -45,9 +46,9 @@ class CategoryController(
         ResponseEntity.status(HttpStatus.OK)
             .body(categoryService.findCategory(name,true).toResponse())
 
-    @GetMapping("/{name}/services")
+    @GetMapping("/services")
     fun getCategoryServices(
-        @PathVariable name: String
+        @RequestParam name: String
     ) : ResponseEntity<List<ItemResponse>> =
         ResponseEntity.status(HttpStatus.OK)
             .body(categoryService.searchCategoryServices(name).map { it.toDto() })
@@ -58,9 +59,9 @@ class CategoryController(
             .body(categoryService.searchRootCategories(true)
                 .map { it.toResponse() })
 
-    @GetMapping("/subs/{root}")
+    @GetMapping("/subs")
     fun getAllSubCategories(
-        @PathVariable root: String
+        @RequestParam root: String
     ) : ResponseEntity<List<CategoryResponse>> =
         ResponseEntity.status(HttpStatus.OK)
             .body(categoryService.searchSubCategories(root,true)

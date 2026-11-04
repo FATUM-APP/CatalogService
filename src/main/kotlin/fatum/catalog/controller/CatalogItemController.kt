@@ -103,9 +103,9 @@ class CatalogItemController(
         )
     }
 
-    @GetMapping("/{id}/images")
+    @GetMapping("/images")
     fun seeCatalogImages(
-        @PathVariable id: String,
+        @RequestParam id: String,
     ): ResponseEntity<List<CatalogImage>> {
         return ResponseEntity.ok(catalogItemService.seeCatalogImages(id))
     }

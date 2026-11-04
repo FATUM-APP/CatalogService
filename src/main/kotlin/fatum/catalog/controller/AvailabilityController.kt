@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.DayOfWeek
 
@@ -55,19 +56,19 @@ class AvailabilityController(
 
     //==========================================READ==============================================
 
-    @GetMapping("/{providerId}/{day}")
+    @GetMapping
     fun getAvailability(
-        @PathVariable providerId : String,
-        @PathVariable day : DayOfWeek
+        @RequestParam providerId : String,
+        @RequestParam day : DayOfWeek
         ) :  ResponseEntity<Availability> =
         ResponseEntity.status(HttpStatus.OK)
             .body(availabilityService.findAvailability(providerId, day)
                 .toResponse())
 
-    @GetMapping("/{providerId}")
+    @GetMapping
     fun getProviderAvailability(
-        @PathVariable providerId : String,
-        @PathVariable day : DayOfWeek
+        @RequestParam providerId : String,
+        @RequestParam day : DayOfWeek
     ) :  ResponseEntity<List<Availability>> =
         ResponseEntity.status(HttpStatus.OK)
             .body(availabilityService.findAvailabilityByProvider(providerId)
