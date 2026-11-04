@@ -25,6 +25,8 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
     UK_SERVICES_TITLE_PROVIDER("Provider cannot have two services with the same title", HttpStatus.CONFLICT),
     NEGATIVE_PRICE("Price cannot be negative", HttpStatus.BAD_REQUEST),
     NEGATIVE_ESTIMATED_TIME("Estimated time cannot be negative", HttpStatus.BAD_REQUEST),
+    ALREADY_FAVORITE("Item is already in favorites", HttpStatus.CONFLICT),
+    FAVORITE_NOT_FOUND("Favorite not found", HttpStatus.NOT_FOUND),
 
     // Preguntas
     QUESTION_WITHOUT_OPTIONS("Question must have at least two options", HttpStatus.BAD_REQUEST),

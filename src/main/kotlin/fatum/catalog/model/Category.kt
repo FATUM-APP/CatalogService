@@ -15,7 +15,11 @@ class Category private constructor(
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "PARENT_NAME", referencedColumnName = "NAME")
-    val parent: Category? = null
+    val parent: Category? = null,
+
+    @Column(name = "LOGO_KEY", length = 512)
+    var logoKey: String
+
 ) {
 
     @Id
