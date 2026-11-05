@@ -29,17 +29,19 @@
         <tag/>
         <url/>
     </scm>
-    <properties>
-        <java.version>25</java.version>
-        <kotlin.version>2.3.21</kotlin.version>
-        <storage-client.version>1.0.0-local</storage-client.version>
-    </properties>
+    <repositories>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/FATUM-APP/StorageClient</url>
+        </repository>
+    </repositories>
+
 
     <dependencies>
         <dependency>
             <groupId>io.github.fatumapp</groupId>
             <artifactId>fatum-storage-spring-boot-starter</artifactId>
-            <version>${storage-client.version}</version>
+            <version>1.0.0</version>
         </dependency>
 
         <dependency>
