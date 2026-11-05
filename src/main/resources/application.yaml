@@ -26,6 +26,11 @@ spring:
 server:
   port: ${PORT:8080}
 
+logging:
+  level:
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: DEBUG
+    fatum.catalog.exception: DEBUG
+
 cognito:
   token-url: ${TOKEN_URL:https://us-east-19qukvptss.auth.us-east-1.amazoncognito.com/oauth2/token}
   client-id: ${COGNITO_M2M_CLIENT_ID}
