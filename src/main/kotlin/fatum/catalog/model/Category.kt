@@ -34,7 +34,7 @@ class Category private constructor(
     var isAble: Boolean = true
         protected set
 
-    @OneToMany(mappedBy = "parent", cascade = [CascadeType.PERSIST, CascadeType.MERGE])
+    @OneToMany(mappedBy = "parent")
     private val _subcategories: MutableSet<Category> = mutableSetOf()
 
     @OneToMany(mappedBy = "category")
