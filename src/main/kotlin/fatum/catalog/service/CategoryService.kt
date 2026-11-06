@@ -44,14 +44,14 @@ class CategoryService(
 
     @Transactional
     fun createSubCategory(request: CreateCategoryRequest, logo: MultipartFile?) {
+        val parent = getCategory(request.parent ?: "")
+        if (categoryRepository.existsByNameIgnoreCase(request.name.trim()))
+            throw FatumServiceException(CatalogErrorCode.CATEGORY_EXISTS)
         val logoKey = logo?.let {
             validateLogoImage(it)
             fileStorageClient.upload(it, logoStorageRoute).key
         }
-        val subcategory = request.toSubcategory(getCategory(request.parent ?: ""), logoKey)
-        if (categoryRepository.existsByNameIgnoreCase(subcategory.name))
-            throw FatumServiceException(CatalogErrorCode.CATEGORY_EXISTS)
-
+        val subcategory = request.toSubcategory(parent, logoKey)
         categoryRepository.save(subcategory)
     }
 

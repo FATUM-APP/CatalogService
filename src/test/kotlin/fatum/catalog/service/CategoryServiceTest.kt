@@ -71,7 +71,7 @@ class CategoryServiceTest {
             )
 
             val exception = assertThrows<FatumServiceException> {
-                service.createRoot(request, null)
+                service.createRoot(request, logo = null)
             }
 
             assertEquals(CatalogErrorCode.CATEGORY_EXISTS, exception.errorCode)
@@ -121,7 +121,7 @@ class CategoryServiceTest {
         @Test
         fun `createSubCategory should throw CATEGORY_EXISTS when name already exists`() {
             whenever(repository.findByNameIgnoreCase("belleza")).thenReturn(belleza)
-            whenever(repository.existsByNameIgnoreCase("Uñas")).thenReturn(true)
+            whenever(repository.existsByNameIgnoreCase("uñas")).thenReturn(true)
 
             val request = CreateCategoryRequest(
                 name = "uñas",
