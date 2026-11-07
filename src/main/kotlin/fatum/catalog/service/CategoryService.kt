@@ -129,7 +129,10 @@ class CategoryService(
     }
 
     fun getCategoryLogoUrl(category: Category): String? =
-        category.logoKey?.let { fileStorageClient.presignedUrl(logoStorageRoute, it) }
+        category.logoKey?.let {
+            try { fileStorageClient.presignedUrl(logoStorageRoute, it) }
+            catch (_: Exception) { null }
+        }
 
     private fun validateLogoImage(image: MultipartFile) {
         if (image.isEmpty) throw FatumServiceException(CatalogErrorCode.INVALID_IMAGE)
