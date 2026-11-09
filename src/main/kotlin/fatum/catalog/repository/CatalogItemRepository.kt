@@ -15,6 +15,16 @@ interface CatalogItemRepository : JpaRepository<CatalogItem, String> {
     fun existsByCategoryNameAndProviderIdIgnoreCase(categoryName: String, providerId: String): Boolean
 
     @Query("""
+    SELECT s FROM CatalogItem s
+    WHERE s.providerId = :providerId
+      AND (:categoryName IS NULL OR UPPER(s.category.name) = UPPER(:categoryName))
+    """)
+    fun findByProviderAndOptionalCategory(
+        @Param("providerId") providerId: String,
+        @Param("categoryName") categoryName: String?
+    ): List<CatalogItem>
+
+    @Query("""
         SELECT s FROM CatalogItem s
         WHERE s.id = :id
           AND (:status IS NULL OR s.status = :status)

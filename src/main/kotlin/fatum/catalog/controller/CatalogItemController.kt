@@ -110,6 +110,15 @@ class CatalogItemController(
         return ResponseEntity.ok(catalogItemService.seeCatalogImages(id))
     }
 
+    @GetMapping("/provider")
+    fun getProviderCatalogItems(
+        @RequestParam providerId: String,
+        @RequestParam(required = false) category: String?
+    ) : ResponseEntity<List<ItemResponse>> =
+        ResponseEntity.status(HttpStatus.OK).body(
+            catalogItemService.findByProviderAndCategory(providerId,category).map { it.toDto() }
+        )
+
     //==========================================UPDATE==============================================
 
     @PutMapping("/update", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])

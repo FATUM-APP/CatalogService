@@ -9,13 +9,14 @@ import jakarta.validation.constraints.Size
 data class FixedQuestion(
     @field:NotBlank(message = "A Question is required")
     @field:Size(max = 50, message = "A question cannot be longer than 50 characters")
-    private val _question: String,
+    var question: String,
     val type: QuestionType,
     val options: Set<String> = emptySet()
 ) {
-    val question: String = _question.trim().lowercase().replaceFirstChar { it.uppercase() }
+
 
     init {
+        question = question.trim().lowercase().replaceFirstChar { it.uppercase() }
         if ((type == QuestionType.MULTIPLE_CHOICE || type == QuestionType.SINGLE_CHOICE)
             && options.size < 2
         ) throw FatumServiceException(CatalogErrorCode.QUESTION_WITHOUT_OPTIONS)

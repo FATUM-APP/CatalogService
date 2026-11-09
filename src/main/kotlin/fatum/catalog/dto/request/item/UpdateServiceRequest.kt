@@ -26,8 +26,7 @@ data class UpdateServiceRequest(
     @field:PositiveOrZero(message = "Default estimated time cannot be negative")
     val defaultEstimatedTime: Int? = null,
     val jobType: JobType? = null,
-    @field:Valid
-    val fixedQuestions: Set<FixedQuestion> = emptySet()
+    val fixedQuestions: Set<@JvmSuppressWildcards @Valid FixedQuestion> = emptySet()
 ){
     val id = _id.trim()
     val title = _title?.trim()

@@ -36,6 +36,5 @@ data class CreateServiceRequest(
     @field:NotBlank(message = "Category is required")
     @field:Size(max = 30, message = "Category must not exceed 30 characters")
     val category: String,
-    @field:Valid
-    val fixedQuestions: Set<FixedQuestion> = emptySet()
+    val fixedQuestions: Set<@JvmSuppressWildcards @Valid FixedQuestion> = emptySet()
     )
