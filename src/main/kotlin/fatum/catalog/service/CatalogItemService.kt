@@ -223,7 +223,7 @@ class CatalogItemService(
     //==========================================IMAGES==============================================
     companion object {
         private const val MAX_IMAGES = 10
-        private const val MAX_IMAGE_SIZE = 3L * 1024 * 1024
+        private const val MAX_IMAGE_SIZE = 5L * 1024 * 1024  // 5MB per image
         private val ALLOWED_IMAGE_TYPES = setOf("image/jpeg", "image/png", "image/webp")
     }
     private fun transformToServiceImages(images : List<MultipartFile>) : List<ServiceImage> =

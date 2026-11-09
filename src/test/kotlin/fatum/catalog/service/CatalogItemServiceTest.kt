@@ -248,10 +248,10 @@ class CatalogItemServiceTest {
         }
 
         @Test
-        fun `should throw IMAGE_TOO_LARGE when image exceeds 3MB`() {
+        fun `should throw IMAGE_TOO_LARGE when image exceeds 5MB`() {
             val image = mock<MultipartFile>()
             whenever(image.isEmpty).thenReturn(false)
-            whenever(image.size).thenReturn(4L * 1024 * 1024)
+            whenever(image.size).thenReturn(6L * 1024 * 1024)
 
             val request = CreateServiceRequest(
                 providerId = "p", title = "t", priceType = PriceType.FIXED, category = "c"

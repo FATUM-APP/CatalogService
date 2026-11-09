@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @ControllerAdvice
 class GlobalExceptionHandler {
@@ -39,6 +40,15 @@ class GlobalExceptionHandler {
             "message" to (ex.statusText)
         )
         return ResponseEntity.status(ex.statusCode).body(body)
+    }
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResource(ex: NoResourceFoundException): ResponseEntity<Map<String, String?>> {
+        val body = mapOf(
+            "code" to "NOT_FOUND",
+            "message" to ex.message
+        )
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body)
     }
 
     @ResponseBody

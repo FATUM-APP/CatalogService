@@ -20,8 +20,8 @@ spring:
     baseline-version: 0
   servlet:
     multipart:
-      max-file-size: 3MB
-      max-request-size: 8MB
+      max-file-size: 15MB
+      max-request-size: 50MB
 
   cloud:
     aws:
