@@ -16,7 +16,7 @@ fun CreateServiceRequest.toEntity(
     CatalogItem(
         providerId = provider.userId,
         providerName = provider.name,
-        providerUsername = provider.userName,
+        providerUsername = provider.username,
         title = title.trim(),
         description = description?.trim(),
         basePrice = basePrice,

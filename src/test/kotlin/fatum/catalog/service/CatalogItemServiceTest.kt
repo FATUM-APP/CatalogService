@@ -70,7 +70,7 @@ class CatalogItemServiceTest {
     )
 
     private fun validProvider(userId: String = "provider-123") = M2User(
-        userId = userId, name = "Provider Test", userName = "providertest",
+        userId = userId, name = "Provider Test", username = "providertest",
         birthDate = LocalDate.of(1990, 1, 1),
         isProfessional = true, isVerified = true, isActive = true, gender = "M",
         principalAddress = AddressDTO("Calle 123", "Casa", "Bogota", "Cundinamarca", "Colombia")

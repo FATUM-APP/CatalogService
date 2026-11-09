@@ -3,7 +3,6 @@ package fatum.catalog.controller
 import fatum.catalog.dto.mapper.toResponse
 import fatum.catalog.dto.request.schedule.ChangeAvailability
 import fatum.catalog.dto.request.schedule.FullAvailability
-import fatum.catalog.dto.request.schedule.InitializeProviderAvailability
 import fatum.catalog.dto.response.schedule.Availability
 import fatum.catalog.service.ProviderAvailabilityService
 import org.springframework.http.HttpStatus
@@ -30,13 +29,7 @@ class AvailabilityController(
 
     //==========================================UPDATE==============================================
 
-    @PostMapping("/initialize")
-    fun initializeAvailability(
-        @RequestBody request: InitializeProviderAvailability
-    ): ResponseEntity<Void> {
-        availabilityService.initialize(request.providerId)
-        return ResponseEntity.status(HttpStatus.CREATED).build()
-    }
+
 
     @PutMapping("/reschedule")
     fun rescheduleAvailability(

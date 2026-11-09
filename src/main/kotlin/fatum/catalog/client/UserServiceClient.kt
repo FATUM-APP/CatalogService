@@ -32,7 +32,7 @@ class UserServiceClient(
 data class M2User(
     val userId: String,
     val name: String,
-    val userName: String,
+    val username: String,
     val birthDate: LocalDate,
     val isProfessional: Boolean,
     val isVerified: Boolean,

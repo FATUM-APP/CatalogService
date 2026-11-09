@@ -12,7 +12,7 @@ fun BookService.toEntity(
     return Order(
         clientId = customer.userId,
         clientName = customer.name,
-        clientUsername = customer.userName,
+        clientUsername = customer.username,
         booking = booking,
         catalogItem = catalogItem,
         negotiatedPrice = negotiatedPrice ?: catalogItem.basePrice,

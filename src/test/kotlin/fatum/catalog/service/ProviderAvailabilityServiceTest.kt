@@ -36,7 +36,7 @@ class ProviderAvailabilityServiceTest {
     private val validUser = M2User(
         userId = "provider-123",
         name = "Juan Provider",
-        userName = "juanpro",
+        username = "juanpro",
         birthDate = LocalDate.of(1990, 1, 1),
         isProfessional = true,
         isVerified = true,

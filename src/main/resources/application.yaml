@@ -23,6 +23,11 @@ spring:
       max-file-size: 3MB
       max-request-size: 8MB
 
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION:us-east-1}
+
 server:
   port: ${PORT:8080}
 
@@ -39,6 +44,8 @@ cognito:
 
 fatum:
   base-url: ${BASE_URL:https://btx2xtbb3a.execute-api.us-east-1.amazonaws.com}
+  sqs:
+    catalog-events-queue-name: ${QUEUE_NAME:fatum-catalog-queue}
   storage:
     enabled: true
     base-url: ${FILE_SERVICE_URL:http://localhost:8081}

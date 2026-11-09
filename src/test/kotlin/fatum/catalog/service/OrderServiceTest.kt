@@ -55,7 +55,7 @@ class OrderServiceTest {
     private val validUser = M2User(
         userId = "client-456",
         name = "Juan Perez",
-        userName = "juanperez",
+        username = "juanperez",
         birthDate = LocalDate.of(1990, 1, 1),
         isProfessional = false,
         isVerified = true,
