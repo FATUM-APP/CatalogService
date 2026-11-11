@@ -125,7 +125,7 @@ class Order(
     var status: OrderStatus = OrderStatus.PENDING
         protected set
 
-    @Column(name = "UPDATED AT", nullable = false)
+    @Column(name = "UPDATED_AT", nullable = false)
     var updatedAt: LocalDateTime = LocalDateTime.now()
     protected set
 

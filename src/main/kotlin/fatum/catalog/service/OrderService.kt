@@ -82,11 +82,11 @@ class OrderService(
 
     @Transactional
     fun cancelProviderOrders(providerId : String,reason: String) {
-        val pendingOrders = orderRepository.findByProviderIdAndStatus(providerId, OrderStatus.PENDING)
+        val pendingOrders = orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, OrderStatus.PENDING)
         pendingOrders.forEach { it.changeStatus(OrderStatus.REJECTED, reason) }
         orderRepository.saveAll(pendingOrders)
 
-        val acceptedOrders = orderRepository.findByProviderIdAndStatus(providerId, OrderStatus.ACCEPTED)
+        val acceptedOrders = orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, OrderStatus.ACCEPTED)
         acceptedOrders.forEach {
             it.changeStatus(OrderStatus.CANCELLED, reason)
             it.update()
@@ -197,18 +197,18 @@ class OrderService(
 
     @Transactional(readOnly = true)
     fun findOrdersByProvider(providerId: String, status: OrderStatus? = null): List<Order> =
-        if (status != null) orderRepository.findByProviderIdAndStatus(providerId, status)
-        else orderRepository.findByProviderId(providerId)
+        if (status != null) orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, status)
+        else orderRepository.findByProviderIdOrderByUpdatedAtDesc(providerId)
 
     @Transactional(readOnly = true)
     fun findOrdersByService(serviceId: String, status: OrderStatus? = null): List<Order> =
-        if (status != null) orderRepository.findByCatalogItemIdAndStatus(serviceId, status)
-        else orderRepository.findByCatalogItemId(serviceId)
+        if (status != null) orderRepository.findByCatalogItemIdAndStatusOrderByUpdatedAtDesc(serviceId, status)
+        else orderRepository.findByCatalogItemIdOrderByUpdatedAtDesc(serviceId)
 
     @Transactional(readOnly = true)
     fun findOrdersByClient(clientId: String, status: OrderStatus? = null): List<Order> =
-        if (status != null) orderRepository.findByClientIdAndStatus(clientId, status)
-        else orderRepository.findByClientId(clientId)
+        if (status != null) orderRepository.findByClientIdAndStatusOrderByUpdatedAtDesc(clientId, status)
+        else orderRepository.findByClientIdOrderByUpdatedAtDesc(clientId)
 
     @Transactional(readOnly = true)
     fun findActiveOrders(
@@ -267,7 +267,7 @@ class OrderService(
     }
 
     private fun reviewOrderOverlap(providerId: String, booking: LocalDateTime) {
-        val providerOrders = orderRepository.findByProviderId(providerId)
+        val providerOrders = orderRepository.findByProviderIdOrderByUpdatedAtDesc(providerId)
         val overlap = providerOrders.any { timeGapPolicy(it.booking, booking) }
         if (overlap) throw FatumServiceException(CatalogErrorCode.OVERLAPPING_RANGE)
     }
@@ -282,10 +282,10 @@ class OrderService(
         end: LocalDateTime
     ): List<Order> {
 
-        val accepted = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+        val accepted = orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
             providerId, OrderStatus.ACCEPTED, start, end
         )
-        val delivering = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+        val delivering = orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
             providerId, OrderStatus.DELIVERING, start, end
         )
         return accepted + delivering

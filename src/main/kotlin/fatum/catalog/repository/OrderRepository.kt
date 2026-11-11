@@ -8,13 +8,14 @@ import org.springframework.data.repository.query.Param
 import java.time.LocalDateTime
 
 interface OrderRepository: JpaRepository<Order, String> {
-    fun findByProviderId(providerId: String): List<Order>
-    fun findByProviderIdAndStatus(providerId: String, status: OrderStatus): List<Order>
-    fun findByCatalogItemId(serviceId: String): List<Order>
-    fun findByCatalogItemIdAndStatus(serviceId: String, status: OrderStatus): List<Order>
-    fun findByClientId(clientId: String): List<Order>
-    fun findByClientIdAndStatus(clientId: String, status: OrderStatus): List<Order>
-    fun findByProviderIdAndStatusAndBookingBetween(
+
+    fun findByProviderIdOrderByUpdatedAtDesc(providerId: String): List<Order>
+    fun findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId: String, status: OrderStatus): List<Order>
+    fun findByCatalogItemIdOrderByUpdatedAtDesc(serviceId: String): List<Order>
+    fun findByCatalogItemIdAndStatusOrderByUpdatedAtDesc(serviceId: String, status: OrderStatus): List<Order>
+    fun findByClientIdOrderByUpdatedAtDesc(clientId: String): List<Order>
+    fun findByClientIdAndStatusOrderByUpdatedAtDesc(clientId: String, status: OrderStatus): List<Order>
+    fun findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
         providerId: String,
         status: OrderStatus,
         start: LocalDateTime,
