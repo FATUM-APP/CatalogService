@@ -217,6 +217,21 @@ class OrderService(
         end: LocalDateTime
     ) : List<Order> = getActiveOrders(providerId, start, end)
 
+    //==========================================METRICS============================================================
+
+    @Transactional(readOnly = true)
+    fun countByService(serviceId: String): Long =
+        orderRepository.countByCatalogItemId(serviceId)
+
+    @Transactional(readOnly = true)
+    fun countByServiceGroupedByStatus(serviceId: String): Map<OrderStatus, Int> =
+        orderRepository.countByServiceGroupedByStatus(serviceId)
+            .associate { row -> (row[0] as OrderStatus) to (row[1] as Long).toInt() }
+
+    @Transactional(readOnly = true)
+    fun countNewOrdersInPeriod(serviceId: String, start: LocalDateTime, end: LocalDateTime): Long =
+        orderRepository.countNewOrdersInPeriod(serviceId, start, end)
+
     //==========================================HELPERS============================================================
 
     private fun getService(serviceId: String) = catalogItemService.findById(serviceId, ServiceStatus.ACTIVE)

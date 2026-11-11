@@ -124,6 +124,7 @@ class CatalogItemService(
     fun seeCatalogImages(catalogItemId: String, status : ServiceStatus? = null):
             List<CatalogImage> = getImages(catalogItemId,status)
 
+
     //==========================================UPDATE==============================================
 
     @Transactional

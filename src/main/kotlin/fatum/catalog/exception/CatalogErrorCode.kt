@@ -63,4 +63,7 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
     //Schedule
     AVAILABILITY_NOT_FOUND("Availability not found", HttpStatus.NOT_FOUND),
     UNAVAILABILITY_NOT_FOUND("Unavailable range not found", HttpStatus.NOT_FOUND),
+
+    // Metrics
+    METRICS_NOT_FOUND("Metrics not found for this service", HttpStatus.NOT_FOUND),
 }
