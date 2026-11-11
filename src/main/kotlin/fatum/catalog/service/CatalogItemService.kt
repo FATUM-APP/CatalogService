@@ -69,8 +69,7 @@ class CatalogItemService(
      */
     @Transactional(readOnly = true)
     fun findByTitle(title: String, serviceStatus: ServiceStatus? = ServiceStatus.ACTIVE): List<CatalogItem> =
-        if(serviceStatus == null)catalogItemRepository.findByTitle(title,null,true)
-        else catalogItemRepository.findByTitle(title, serviceStatus,true)
+        getByTitle(title, serviceStatus)
 
     /**
      * Searches if a catalog has in its title a substring
@@ -133,7 +132,8 @@ class CatalogItemService(
         validateImages(images)
 
         val oldImages = catalogItem.serviceCatalog.toList()
-        catalogItem.serviceCatalog = transformToServiceImages(images).toMutableList()
+        catalogItem.serviceCatalog.clear()
+        catalogItem.serviceCatalog.addAll(transformToServiceImages(images))
         deleteBucketImages(oldImages)
 
 
@@ -187,6 +187,10 @@ class CatalogItemService(
         (if(status == null) catalogItemRepository.findById(id).orElse(null)
         else catalogItemRepository.findByIdFiltered(id,status,true))
             ?: throw FatumServiceException(CatalogErrorCode.SERVICE_NOT_FOUND)
+
+    private fun getByTitle(title: String, serviceStatus: ServiceStatus? = ServiceStatus.ACTIVE): List<CatalogItem> =
+    if(serviceStatus == null)catalogItemRepository.findByTitle(title,null,true)
+    else catalogItemRepository.findByTitle(title, serviceStatus,true)
 
     private fun validateUniqueness(request: CreateServiceRequest) {
         if (catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase(request.category, request.providerId))
