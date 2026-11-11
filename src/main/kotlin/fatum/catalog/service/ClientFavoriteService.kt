@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 class ClientFavoriteService(
     private val favoriteRepository: ClientFavoriteRepository,
     private val catalogItemService: CatalogItemService,
+    private val metricsService: MetricsService
 ) {
 
     @Transactional
@@ -22,6 +23,7 @@ class ClientFavoriteService(
         if (favoriteRepository.existsByClientIdAndCatalogItemId(request.clientId, item.id!!))
             throw FatumServiceException(CatalogErrorCode.ALREADY_FAVORITE)
         favoriteRepository.save(ClientFavorite(request.clientId, item))
+        metricsService.incrementFavorites(item.id!!)
     }
 
     @Transactional
@@ -29,6 +31,7 @@ class ClientFavoriteService(
         if (!favoriteRepository.existsByClientIdAndCatalogItemId(request.clientId, request.serviceId))
             throw FatumServiceException(CatalogErrorCode.FAVORITE_NOT_FOUND)
         favoriteRepository.deleteByClientIdAndCatalogItemId(request.clientId, request.serviceId)
+        metricsService.decrementFavorites(request.serviceId)
     }
 
     @Transactional(readOnly = true)

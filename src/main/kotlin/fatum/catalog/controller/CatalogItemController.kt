@@ -9,6 +9,7 @@ import fatum.catalog.dto.response.item.ItemResponse
 import fatum.catalog.model.constant.PriceType
 import fatum.catalog.model.constant.ServiceStatus
 import fatum.catalog.service.CatalogItemService
+import fatum.catalog.service.MetricsService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
@@ -31,7 +32,8 @@ import java.math.BigDecimal
 @RequestMapping("/catalog/item")
 @Validated
 class CatalogItemController(
-    private val catalogItemService: CatalogItemService
+    private val catalogItemService: CatalogItemService,
+    private val metricsService: MetricsService
 ) {
 
     //==========================================CREATE==============================================
@@ -41,17 +43,22 @@ class CatalogItemController(
         @Valid @RequestPart("request") request: CreateServiceRequest,
         @RequestPart("images") images: List<MultipartFile>
     ): ResponseEntity<Void> {
-        catalogItemService.createCatalogItem(request, images)
+        val itemId = catalogItemService.createCatalogItem(request, images)
+        metricsService.initializeMetrics(itemId)
         return ResponseEntity.status(HttpStatus.CREATED).build()
     }
 
     //==========================================READ==============================================
 
     @GetMapping("/{id}")
-    fun getById(@PathVariable id: String): ResponseEntity<ItemResponse> =
-        ResponseEntity.status(HttpStatus.OK).body(
+    fun getById(@PathVariable id: String): ResponseEntity<ItemResponse> {
+        metricsService.incrementViews(id)
+        return ResponseEntity.status(HttpStatus.OK).body(
             (catalogItemService.findById(id, ServiceStatus.ACTIVE).toDto())
         )
+
+    }
+
 
     @GetMapping(params = ["title"])
     fun getByTitle(@RequestParam title: String): ResponseEntity<List<ItemResponse>> =

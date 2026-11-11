@@ -37,18 +37,18 @@ class CatalogItemService(
      * @param images
      */
     @Transactional
-    fun createCatalogItem(request: CreateServiceRequest, images: List<MultipartFile>){
+    fun createCatalogItem(request: CreateServiceRequest, images: List<MultipartFile>) : String{
         validateProfessional(request.providerId)
         validateImages(images)
         validateUniqueness(request)
 
         val serviceImages = transformToServiceImages(images)
         val category = categoryService.findCategory(request.category,true)
-        catalogItemRepository.save(request.toEntity(
+         return catalogItemRepository.save(request.toEntity(
             serviceImages,
             category,
             userServiceClient.getUserById(request.providerId)
-            ))
+            )).id!!
     }
 
 
