@@ -73,7 +73,7 @@ class OrderService(
     //==========================================CANCEL============================================================
 
     @Transactional
-    fun cancel(orderId: String, reason: String) {
+    fun cancel(orderId : String,reason: String) {
         val order = getOrder(orderId)
         order.changeStatus(OrderStatus.CANCELLED, reason)
         order.update()
@@ -81,7 +81,7 @@ class OrderService(
     }
 
     @Transactional
-    fun cancelProviderOrders(providerId: String, reason: String) {
+    fun cancelProviderOrders(providerId : String,reason: String) {
         val pendingOrders = orderRepository.findByProviderIdAndStatus(providerId, OrderStatus.PENDING)
         pendingOrders.forEach { it.changeStatus(OrderStatus.REJECTED, reason) }
         orderRepository.saveAll(pendingOrders)
