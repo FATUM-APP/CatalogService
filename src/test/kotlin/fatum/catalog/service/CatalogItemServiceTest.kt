@@ -111,9 +111,9 @@ class CatalogItemServiceTest {
         @Test
         fun `UpdateServiceRequest should trim id, title and description`() {
             val request = UpdateServiceRequest(
-                _id = "   abc-123   ",
-                _title = "  Mi Titulo  ",
-                _description = "  Una descripcion  "
+                id = "   abc-123   ",
+                title = "  Mi Titulo  ",
+                description = "  Una descripcion  "
             )
 
             assertAll(
@@ -125,7 +125,7 @@ class CatalogItemServiceTest {
 
         @Test
         fun `UpdateServiceRequest should handle null title and description`() {
-            val request = UpdateServiceRequest(_id = "  abc  ")
+            val request = UpdateServiceRequest(id = "  abc  ")
 
             assertAll(
                 { assertEquals("abc", request.id) },
@@ -570,7 +570,7 @@ class CatalogItemServiceTest {
             item.serviceCatalog = mutableListOf(oldImage)
 
             val request = UpdateServiceRequest(
-                _id = "item-1", _title = "Nuevo Titulo", _description = "Nueva desc",
+                id = "item-1", title = "Nuevo Titulo", description = "Nueva desc",
                 basePrice = BigDecimal(200), priceType = PriceType.HOURLY,
                 isNegotiable = true, defaultEstimatedTime = 60, jobType = JobType.REMOTE
             )
@@ -603,7 +603,7 @@ class CatalogItemServiceTest {
             val originalTitle = item.title
             val originalPrice = item.basePrice
 
-            val request = UpdateServiceRequest(_id = "item-1")
+            val request = UpdateServiceRequest(id = "item-1")
 
             whenever(catalogItemRepository.findById("item-1")).thenReturn(Optional.of(item))
             whenever(fileStorageClient.upload(any<MultipartFile>(), eq("test-route")))
@@ -623,7 +623,7 @@ class CatalogItemServiceTest {
         @Test
         fun `should throw UK_SERVICES_TITLE_PROVIDER when new title already exists`() {
             val item = createItem()
-            val request = UpdateServiceRequest(_id = "item-1", _title = "Titulo Existente")
+            val request = UpdateServiceRequest(id = "item-1", title = "Titulo Existente")
 
             whenever(catalogItemRepository.findById("item-1")).thenReturn(Optional.of(item))
             whenever(fileStorageClient.upload(any<MultipartFile>(), eq("test-route")))
@@ -640,7 +640,7 @@ class CatalogItemServiceTest {
 
         @Test
         fun `should throw SERVICE_NOT_FOUND when item does not exist`() {
-            val request = UpdateServiceRequest(_id = "item-999")
+            val request = UpdateServiceRequest(id = "item-999")
             whenever(catalogItemRepository.findById("item-999")).thenReturn(Optional.empty())
 
             val ex = assertThrows<FatumServiceException> {

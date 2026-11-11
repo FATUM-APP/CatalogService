@@ -13,12 +13,12 @@ import java.math.BigDecimal
 data class UpdateServiceRequest(
     @field:NotBlank(message = "Provider id is required")
     @field:Size(max = 36, message = "Provider id must not exceed 36 characters")
-    private val _id: String,
+    var id: String,
     @field:Pattern(regexp = "\\S.*", message = "Title cannot be empty")
     @field:Size(max = 40, message = "Title must not exceed 40 characters")
-    private val _title: String? = null,
+    var  title: String? = null,
     @field:Size(max = 1000, message = "Description must not exceed 1000 characters")
-    private val _description: String? = null,
+    var description: String? = null,
     @field:PositiveOrZero(message = "Base price cannot be negative")
     val basePrice: BigDecimal? = null,
     val priceType: PriceType? = null,
@@ -28,7 +28,12 @@ data class UpdateServiceRequest(
     val jobType: JobType? = null,
     val fixedQuestions: Set<@JvmSuppressWildcards @Valid FixedQuestion> = emptySet()
 ){
-    val id = _id.trim()
-    val title = _title?.trim()
-    val description = _description?.trim()
+    init{
+        this.id = id.trim()
+        this.title = title?.trim()
+        this.description = description?.trim()
+    }
+
+
+
 }

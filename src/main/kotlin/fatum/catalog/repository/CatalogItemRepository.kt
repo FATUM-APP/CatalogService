@@ -16,8 +16,10 @@ interface CatalogItemRepository : JpaRepository<CatalogItem, String> {
 
     @Query("""
     SELECT s FROM CatalogItem s
+    JOIN FETCH s.category c
+    LEFT JOIN FETCH c.parent
     WHERE s.providerId = :providerId
-      AND (:categoryName IS NULL OR UPPER(s.category.name) = UPPER(:categoryName))
+      AND (:categoryName IS NULL OR c.name = :categoryName)
     """)
     fun findByProviderAndOptionalCategory(
         @Param("providerId") providerId: String,
