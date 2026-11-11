@@ -125,6 +125,10 @@ class Order(
     var status: OrderStatus = OrderStatus.PENDING
         protected set
 
+    @Column(name = "UPDATED AT", nullable = false)
+    var updatedAt: LocalDateTime = LocalDateTime.now()
+    protected set
+
     init {
         this.negotiatedPrice = negotiatedPrice
     }
@@ -139,6 +143,10 @@ class Order(
 
         this.status = newStatus
         this.reason = reason
+    }
+
+    fun update(){
+        this.updatedAt = LocalDateTime.now()
     }
 
     override fun equals(other: Any?): Boolean {

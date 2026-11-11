@@ -55,7 +55,7 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
     ALREADY_RESPONDED("Party has already responded to this confirmation", HttpStatus.CONFLICT),
     MISSING_ANSWERS("All required questions must be answered", HttpStatus.BAD_REQUEST),
     ACCEPTED_ORDERS_EXIST("There are accepted orders in the requested unavailability range", HttpStatus.CONFLICT),
-
+    UPDATED_TIME_CONFLICT("The updated tiem can't be before the current time", HttpStatus.BAD_REQUEST),
     // Usuario
     NOT_A_PROFESSIONAL("User is not a professional", HttpStatus.BAD_REQUEST),
     INVALID_USER("User is not active or not verified", HttpStatus.BAD_REQUEST),

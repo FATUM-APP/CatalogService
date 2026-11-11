@@ -64,6 +64,7 @@ class OrderService(
 
         order.changeStatus(response.status, response.reason)
         order.estimatedTime = response.estimatedTime
+        order.update()
         orderRepository.save(order)
 
 
@@ -75,6 +76,7 @@ class OrderService(
     fun cancel(orderId: String, reason: String) {
         val order = getOrder(orderId)
         order.changeStatus(OrderStatus.CANCELLED, reason)
+        order.update()
         orderRepository.save(order)
     }
 
@@ -85,7 +87,10 @@ class OrderService(
         orderRepository.saveAll(pendingOrders)
 
         val acceptedOrders = orderRepository.findByProviderIdAndStatus(providerId, OrderStatus.ACCEPTED)
-        acceptedOrders.forEach { it.changeStatus(OrderStatus.CANCELLED, reason) }
+        acceptedOrders.forEach {
+            it.changeStatus(OrderStatus.CANCELLED, reason)
+            it.update()
+        }
         orderRepository.saveAll(acceptedOrders)
     }
 
@@ -104,6 +109,7 @@ class OrderService(
             order.changeStatus(OrderStatus.DELIVERING)
             order.deliveryStartedAt = LocalDateTime.now()
         }
+        order.update()
         orderRepository.save(order)
     }
 
@@ -118,7 +124,7 @@ class OrderService(
 
         if (order.startConfirmation.isContradicted)
             order.changeStatus(OrderStatus.DISPUTED, reason)
-
+        order.update()
         orderRepository.save(order)
     }
 
@@ -130,6 +136,7 @@ class OrderService(
         validateNotResponded(order.completionConfirmation, party)
 
         order.completionConfirmation.confirm(party)
+        order.update()
         orderRepository.save(order)
     }
 
@@ -146,7 +153,7 @@ class OrderService(
             order.changeStatus(OrderStatus.DISPUTED, reason)
         else if (order.completionConfirmation.isBothDenied)
             order.changeStatus(OrderStatus.NOT_DELIVERED, reason)
-
+        order.update()
         orderRepository.save(order)
     }
 
@@ -164,6 +171,7 @@ class OrderService(
         if (order.paymentConfirmation.isConfirmed)
             order.changeStatus(OrderStatus.COMPLETED)
 
+        order.update()
         orderRepository.save(order)
     }
 
@@ -181,6 +189,7 @@ class OrderService(
         if (order.paymentConfirmation.isContradicted)
             order.changeStatus(OrderStatus.DISPUTED, reason)
 
+        order.update()
         orderRepository.save(order)
     }
 
