@@ -3,6 +3,7 @@ package fatum.catalog.model
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.vo.ProviderAvailabilityId
+import fatum.catalog.realtime.listener.ProviderAvailabilityRealtimeListener
 import jakarta.persistence.*
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -11,6 +12,7 @@ import java.time.temporal.ChronoUnit
 
 @Entity
 @Table(name = "OWNER_AVAILABILITY")
+@EntityListeners(ProviderAvailabilityRealtimeListener::class)
 class ProviderAvailability(
 
     @EmbeddedId

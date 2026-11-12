@@ -181,7 +181,14 @@ class CatalogItemServiceTest {
                 .thenReturn(uploadResult())
             whenever(categoryService.findCategory("Plomeria", true)).thenReturn(category)
             val captor = argumentCaptor<CatalogItem>()
-            whenever(catalogItemRepository.save(captor.capture())).thenAnswer { it.arguments[0] }
+            whenever(catalogItemRepository.save(captor.capture())).thenAnswer {
+                val entity = it.arguments[0] as CatalogItem
+                CatalogItem::class.java.getDeclaredField("id").apply {
+                    isAccessible = true
+                    set(entity, "service-1")
+                }
+                entity
+            }
 
             service.createCatalogItem(request, listOf(image))
 

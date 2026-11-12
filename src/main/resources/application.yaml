@@ -58,3 +58,50 @@ catalog:
     storage-route: catalog-service:photo
   categories:
     logo-route: catalog-service:category-logo
+  realtime:
+    enabled: ${REALTIME_ENABLED:true}
+    endpoint: ${REALTIME_ENDPOINT:/ws/catalog}
+    # Fallback para proxies que no permiten upgrade a WebSocket. Vacío = desactivado.
+    sock-js-endpoint: ${REALTIME_SOCKJS_ENDPOINT:/ws/catalog-sockjs}
+    allowed-origins: ${REALTIME_ALLOWED_ORIGINS:*}
+    heartbeat:
+      interval: ${REALTIME_HEARTBEAT_MS:25000}
+    limits:
+      message-size: 65536
+      send-buffer-size: 524288
+      send-time-limit: 10000
+    broker:
+      # SIMPLE = broker en memoria (una sola instancia). RELAY = STOMP relay a RabbitMQ/Artemis.
+      mode: ${REALTIME_BROKER_MODE:SIMPLE}
+      prefixes:
+        - /topic
+        - /queue
+      relay:
+        host: ${REALTIME_RELAY_HOST:localhost}
+        port: ${REALTIME_RELAY_PORT:61613}
+        client-login: ${REALTIME_RELAY_CLIENT_LOGIN:guest}
+        client-passcode: ${REALTIME_RELAY_CLIENT_PASSCODE:guest}
+        system-login: ${REALTIME_RELAY_SYSTEM_LOGIN:guest}
+        system-passcode: ${REALTIME_RELAY_SYSTEM_PASSCODE:guest}
+        virtual-host: ${REALTIME_RELAY_VIRTUAL_HOST:}
+    auth:
+      # false = cualquiera puede decir "soy este usuario" en el CONNECT (como hoy los endpoints REST).
+      # true  = exige access token válido (Cognito u otro OIDC) en el frame CONNECT.
+      enabled: ${REALTIME_AUTH_ENABLED:false}
+      # JWT = valida el access token de Cognito contra el JWKS.
+      # GATEWAY_HEADER = confía en un borde que ya validó el token (X-User-Id).
+      mode: ${REALTIME_AUTH_MODE:JWT}
+      public-topic-patterns:
+        - /topic/calendar/**
+      allowed-send-patterns: []
+      max-subscriptions-per-session: 30
+      jwt:
+        issuer-uri: ${COGNITO_ISSUER_URI:}
+        jwk-set-uri: ${COGNITO_JWK_SET_URI:}
+        principal-claim: ${REALTIME_PRINCIPAL_CLAIM:sub}
+        accepted-audiences: []
+      gateway-header:
+        name: X-User-Id
+    calendar:
+      # Si un cambio cubre más días que esto se envía INVALIDATE en vez de un parche enorme.
+      max-patch-days: 62

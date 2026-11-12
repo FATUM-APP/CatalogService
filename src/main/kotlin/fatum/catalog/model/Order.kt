@@ -6,11 +6,13 @@ import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.OrderStatus
 import fatum.catalog.model.vo.DualConfirmation
 import fatum.catalog.model.vo.QuestionAnswer
+import fatum.catalog.realtime.listener.OrderRealtimeListener
 import jakarta.persistence.AttributeOverride
 import jakarta.persistence.AttributeOverrides
 import jakarta.persistence.Column
 import jakarta.persistence.Embedded
 import jakarta.persistence.Entity
+import jakarta.persistence.EntityListeners
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
@@ -25,6 +27,7 @@ import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @Entity
+@EntityListeners(OrderRealtimeListener::class)
 @Table(name = "ORDERS")
 class Order(
 

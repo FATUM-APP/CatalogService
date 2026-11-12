@@ -22,6 +22,13 @@ interface OrderRepository: JpaRepository<Order, String> {
         end: LocalDateTime
     ): List<Order>
 
+    fun findByProviderIdAndStatusAndBookingBetween(
+        providerId: String,
+        status: OrderStatus,
+        start: LocalDateTime,
+        end: LocalDateTime
+    ): List<Order>
+
     fun countByCatalogItemId(serviceId: String): Long
 
     @Query("""

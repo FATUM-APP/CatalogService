@@ -2,11 +2,13 @@ package fatum.catalog.model
 
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
+import fatum.catalog.realtime.listener.ProviderUnavailableRangeRealtimeListener
 import jakarta.persistence.*
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
+@EntityListeners(ProviderUnavailableRangeRealtimeListener::class)
 @Table(
     name = "PROVIDER_UNAVAILABLE_DATES",
     uniqueConstraints = [

@@ -1,14 +1,9 @@
 package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.mapper.toConfirmationEvent
-import fatum.catalog.dto.mapper.toCreatedEvent
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
-import fatum.catalog.dto.mapper.toOrderCancelled
-import fatum.catalog.dto.mapper.toStatusChangedEvent
-import fatum.catalog.event.payload.order.OrderCreated
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -19,7 +14,6 @@ import fatum.catalog.model.constant.ServiceStatus
 import fatum.catalog.model.vo.DualConfirmation
 import fatum.catalog.model.vo.QuestionAnswer
 import fatum.catalog.repository.OrderRepository
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -32,7 +26,6 @@ class OrderService(
     private val providerAvailabilityService: ProviderAvailabilityService,
     private val providerUnavailableRangeService: ProviderUnavailableRangeService,
     private val catalogItemService: CatalogItemService,
-    private val eventPublisher: ApplicationEventPublisher
 ) {
     private val gapTime: Int = 30
 
@@ -48,12 +41,7 @@ class OrderService(
             throw FatumServiceException(CatalogErrorCode.PROVIDER_UNAVAILABLE)
 
         val client = userServiceClient.getUserById(order.clientId)
-        val order = orderRepository.save(order.toEntity(item, client))
-
-        eventPublisher.publishEvent(
-            order.toCreatedEvent()
-        )
-
+        orderRepository.save(order.toEntity(item, client))
     }
 
     //==========================================ACCEPT/REJECT=====================================================
@@ -78,12 +66,6 @@ class OrderService(
         order.estimatedTime = response.estimatedTime
         order.update()
         orderRepository.save(order)
-
-        eventPublisher.publishEvent(
-            order.toStatusChangedEvent()
-        )
-
-
     }
 
     //==========================================CANCEL============================================================
@@ -94,10 +76,6 @@ class OrderService(
         order.changeStatus(OrderStatus.CANCELLED, reason)
         order.update()
         orderRepository.save(order)
-
-        eventPublisher.publishEvent(
-            order.toOrderCancelled()
-        )
     }
 
     @Transactional
@@ -115,10 +93,6 @@ class OrderService(
             it.update()
         }
         orderRepository.saveAll(acceptedOrders)
-
-        (pendingOrders + acceptedOrders).forEach {
-            eventPublisher.publishEvent(it.toOrderCancelled())
-        }
     }
 
     //==========================================CONFIRMATIONS=====================================================
@@ -139,10 +113,6 @@ class OrderService(
         }
         order.update()
         orderRepository.save(order)
-
-        eventPublisher.publishEvent(
-            order.toConfirmationEvent("START", party, "CONFIRMED", statusChanged)
-        )
     }
 
     @Transactional
@@ -160,10 +130,6 @@ class OrderService(
             order.changeStatus(OrderStatus.DISPUTED, reason)
         order.update()
         orderRepository.save(order)
-
-        eventPublisher.publishEvent(
-            order.toConfirmationEvent("START", party, "DENIED", statusChanged)
-        )
     }
 
     @Transactional
