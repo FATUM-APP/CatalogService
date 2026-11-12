@@ -7,7 +7,10 @@ import fatum.catalog.dto.request.schedule.FullAvailability
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.ProviderAvailability
+import fatum.catalog.realtime.event.CalendarChangeReason
+import fatum.catalog.realtime.event.CalendarChangedEvent
 import fatum.catalog.repository.ProviderAvailabilityRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.stereotype.Service
 import java.time.DayOfWeek
@@ -16,7 +19,8 @@ import java.time.LocalTime
 @Service
 class ProviderAvailabilityService(
     private val providerAvailabilityRepository: ProviderAvailabilityRepository,
-    private val userServiceClient: UserServiceClient
+    private val userServiceClient: UserServiceClient,
+    private val eventPublisher: ApplicationEventPublisher
 ) {
     @Transactional
     fun initialize(providerId: String){
@@ -33,6 +37,7 @@ class ProviderAvailabilityService(
         days.forEach {
             providerAvailabilityRepository.save(ProviderAvailability(providerId, it))
         }
+        publishCalendarChange(providerId)
     }
 
     @Transactional
@@ -46,6 +51,7 @@ class ProviderAvailabilityService(
         } ?: request.toEntity()
 
         providerAvailabilityRepository.save(availability)
+        publishCalendarChange(request.providerId)
     }
 
     @Transactional
@@ -55,6 +61,7 @@ class ProviderAvailabilityService(
             changeAvailabilityToAllDay()
         } ?: request.toEntity()
         providerAvailabilityRepository.save(availability)
+        publishCalendarChange(request.providerId)
     }
 
     @Transactional(readOnly = true)
@@ -79,9 +86,14 @@ class ProviderAvailabilityService(
             getAvailability(providerId, day)
                 ?: throw FatumServiceException(CatalogErrorCode.AVAILABILITY_NOT_FOUND)
         )
+        publishCalendarChange(providerId)
     }
 
     //==========================================HELPERS==============================================
+
+    private fun publishCalendarChange(providerId: String) {
+        eventPublisher.publishEvent(CalendarChangedEvent(providerId, CalendarChangeReason.AVAILABILITY_CHANGED))
+    }
 
     private fun validateProfessional(providerId: String){
         val provider = userServiceClient.getUserById(providerId)

@@ -8,7 +8,12 @@ import fatum.catalog.dto.mapper.toEntity
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.ProviderUnavailableRange
+import fatum.catalog.realtime.event.CalendarChangeReason
+import fatum.catalog.realtime.event.CalendarChangedEvent
+import fatum.catalog.realtime.event.OrderChangeType
+import fatum.catalog.realtime.event.OrderChangedEvent
 import fatum.catalog.repository.UnavailableRangeRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.YearMonth
@@ -20,7 +25,8 @@ import fatum.catalog.repository.OrderRepository
 class ProviderUnavailableRangeService(
     private val userServiceClient: UserServiceClient,
     private val unavailableRangeRepository: UnavailableRangeRepository,
-    private val orderRepository: OrderRepository
+    private val orderRepository: OrderRepository,
+    private val eventPublisher: ApplicationEventPublisher
 ) {
     @Transactional
     fun establishUnavailability(request : CreateUnavailability){
@@ -29,6 +35,7 @@ class ProviderUnavailableRangeService(
         validateDates(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         handleOrdersInRange(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         unavailableRangeRepository.save(unavailability)
+        publishCalendarChange(unavailability.providerId)
     }
 
     @Transactional
@@ -38,6 +45,7 @@ class ProviderUnavailableRangeService(
         validateDates(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         handleOrdersInRange(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         unavailableRangeRepository.save(unavailability)
+        publishCalendarChange(unavailability.providerId)
     }
 
     @Transactional
@@ -48,6 +56,7 @@ class ProviderUnavailableRangeService(
         validateDates(unavailability.providerId, start, end,unavailability.id)
         unavailability.changeDates(start,end)
         unavailableRangeRepository.save(unavailability)
+        publishCalendarChange(unavailability.providerId)
     }
 
     @Transactional(readOnly = true)
@@ -73,11 +82,17 @@ class ProviderUnavailableRangeService(
 
     @Transactional
     fun deleteUnavailability(id: String){
-        unavailableRangeRepository.delete(getUnavailability(id))
+        val unavailability = getUnavailability(id)
+        unavailableRangeRepository.delete(unavailability)
+        publishCalendarChange(unavailability.providerId)
     }
 
 
     //==========================================HELPERS==============================================
+
+    private fun publishCalendarChange(providerId: String) {
+        eventPublisher.publishEvent(CalendarChangedEvent(providerId, CalendarChangeReason.UNAVAILABILITY_CHANGED))
+    }
 
     private fun validateProfessional(providerId: String){
         val provider = userServiceClient.getUserById(providerId)
@@ -127,6 +142,11 @@ class ProviderUnavailableRangeService(
             it.update()
         }
         orderRepository.saveAll(pendingOrders)
+        pendingOrders.forEach {
+            it.id?.let { orderId ->
+                eventPublisher.publishEvent(OrderChangedEvent(orderId, OrderChangeType.ORDER_UPDATED))
+            }
+        }
     }
 
 

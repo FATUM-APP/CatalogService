@@ -14,6 +14,8 @@ import fatum.catalog.model.constant.OrderStatus
 import fatum.catalog.model.constant.ServiceStatus
 import fatum.catalog.model.vo.DualConfirmation
 import fatum.catalog.model.vo.QuestionAnswer
+import fatum.catalog.realtime.event.OrderChangeType
+import fatum.catalog.realtime.event.OrderChangedEvent
 import fatum.catalog.repository.OrderRepository
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -28,6 +30,7 @@ class OrderService(
     private val providerAvailabilityService: ProviderAvailabilityService,
     private val providerUnavailableRangeService: ProviderUnavailableRangeService,
     private val catalogItemService: CatalogItemService,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     private val gapTime: Int = 30
 
@@ -43,10 +46,8 @@ class OrderService(
             throw FatumServiceException(CatalogErrorCode.PROVIDER_UNAVAILABLE)
 
         val client = userServiceClient.getUserById(order.clientId)
-        orderRepository.save(order.toEntity(item, client))
-
-
-
+        val saved = orderRepository.save(order.toEntity(item, client))
+        publish(saved, OrderChangeType.ORDER_CREATED)
     }
 
     //==========================================ACCEPT/REJECT=====================================================
@@ -71,9 +72,7 @@ class OrderService(
         order.estimatedTime = response.estimatedTime
         order.update()
         orderRepository.save(order)
-
-
-
+        publish(order, OrderChangeType.ORDER_UPDATED)
     }
 
     //==========================================CANCEL============================================================
@@ -84,7 +83,7 @@ class OrderService(
         order.changeStatus(OrderStatus.CANCELLED, reason)
         order.update()
         orderRepository.save(order)
-
+        publish(order, OrderChangeType.ORDER_CANCELLED)
     }
 
     @Transactional
@@ -95,6 +94,7 @@ class OrderService(
             it.update()
         }
         orderRepository.saveAll(pendingOrders)
+        pendingOrders.forEach { publish(it, OrderChangeType.ORDER_UPDATED) }
 
         val acceptedOrders = orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, OrderStatus.ACCEPTED)
         acceptedOrders.forEach {
@@ -102,8 +102,7 @@ class OrderService(
             it.update()
         }
         orderRepository.saveAll(acceptedOrders)
-
-
+        acceptedOrders.forEach { publish(it, OrderChangeType.ORDER_CANCELLED) }
     }
 
     //==========================================CONFIRMATIONS=====================================================
@@ -124,8 +123,7 @@ class OrderService(
         }
         order.update()
         orderRepository.save(order)
-
-
+        publish(order, OrderChangeType.ORDER_UPDATED)
     }
 
     @Transactional
@@ -143,8 +141,7 @@ class OrderService(
             order.changeStatus(OrderStatus.DISPUTED, reason)
         order.update()
         orderRepository.save(order)
-
-
+        publish(order, OrderChangeType.ORDER_UPDATED)
     }
 
     @Transactional
@@ -157,6 +154,7 @@ class OrderService(
         order.completionConfirmation.confirm(party)
         order.update()
         orderRepository.save(order)
+        publish(order, OrderChangeType.ORDER_UPDATED)
     }
 
     @Transactional
@@ -174,6 +172,7 @@ class OrderService(
             order.changeStatus(OrderStatus.NOT_DELIVERED, reason)
         order.update()
         orderRepository.save(order)
+        publish(order, OrderChangeType.ORDER_UPDATED)
     }
 
     @Transactional
@@ -192,6 +191,7 @@ class OrderService(
 
         order.update()
         orderRepository.save(order)
+        publish(order, OrderChangeType.ORDER_UPDATED)
     }
 
     @Transactional
@@ -210,6 +210,7 @@ class OrderService(
 
         order.update()
         orderRepository.save(order)
+        publish(order, OrderChangeType.ORDER_UPDATED)
     }
 
     //==========================================READ ONLY=========================================================
@@ -255,6 +256,14 @@ class OrderService(
         orderRepository.countNewOrdersInPeriod(serviceId, start, end)
 
     //==========================================HELPERS============================================================
+
+    /**
+     * Publica el hecho de negocio. El evento se entrega a [fatum.catalog.realtime.RealtimeEventListener]
+     * solo cuando la transacción hace commit; si algo falla, no se notifica nada.
+     */
+    private fun publish(order: Order, changeType: OrderChangeType) {
+        order.id?.let { eventPublisher.publishEvent(OrderChangedEvent(it, changeType)) }
+    }
 
     private fun getService(serviceId: String) = catalogItemService.findById(serviceId, ServiceStatus.ACTIVE)
 

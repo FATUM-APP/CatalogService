@@ -58,3 +58,11 @@ catalog:
     storage-route: catalog-service:photo
   categories:
     logo-route: catalog-service:category-logo
+
+app:
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+  security:
+    enabled: ${SECURITY_ENABLED:true}
+    # https://cognito-idp.<region>.amazonaws.com/<userPoolId>
+    issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/REPLACE_ME}
