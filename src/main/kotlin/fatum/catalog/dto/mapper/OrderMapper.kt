@@ -4,6 +4,12 @@ import fatum.catalog.client.M2User
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.response.order.DualConfirmationResponse
 import fatum.catalog.dto.response.order.OrderDTO
+import fatum.catalog.event.notification.order.OrderCancelledNotify
+import fatum.catalog.event.notification.order.OrderCreatedNotify
+import fatum.catalog.event.notification.order.OrderStatusChangedNotify
+import fatum.catalog.event.payload.order.OrderCancelled
+import fatum.catalog.event.payload.order.OrderCreated
+import fatum.catalog.event.payload.order.OrderStatusChanged
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Order
 import fatum.catalog.model.vo.DualConfirmation
@@ -62,3 +68,50 @@ fun Order.toResponse() : OrderDTO =
         reason = this.reason,
         status = this.status.name
     )
+
+fun Order.toCreatedEvent() =
+    OrderCreated(
+        providerId = this.catalogItem.providerId,
+        clientUsername = this.clientUsername,
+        orderId = this.id!!,
+        serviceId = this.catalogItem.id!!
+    )
+
+fun OrderCreated.toNotification() =
+    OrderCreatedNotify(
+        orderId = this.orderId,
+        serviceId = this.serviceId,
+        clientUsername = this.clientUsername
+    )
+
+fun Order.toStatusChangedEvent() =
+    OrderStatusChanged(
+        orderId = this.id!!,
+        status = this.status.name,
+        estimatedTime = this.estimatedTime,
+        providerId = this.catalogItem.providerId,
+        clientId = this.clientId,
+        booking = this.booking
+    )
+fun OrderStatusChanged.toNotification() =
+    OrderStatusChangedNotify(
+        orderId = this.orderId,
+        status = this.status,
+        estimatedTime = this.estimatedTime,
+        booking = this.booking
+    )
+
+fun Order.toOrderCancelled() =
+    OrderCancelled(
+        orderId = this.id!!,
+        reason = this.reason!!,
+        providerId = this.catalogItem.providerId,
+        clientId = this.clientId
+    )
+
+fun OrderCancelled.toNotification() =
+    OrderCancelledNotify(
+        orderId = this.orderId,
+        reason = this.reason
+    )
+

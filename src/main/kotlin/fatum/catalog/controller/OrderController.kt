@@ -147,4 +147,9 @@ class OrderController(
     ): ResponseEntity<List<OrderDTO>> =
         ResponseEntity.status(HttpStatus.OK)
             .body(orderService.findOrdersByClient(clientId, status).map { it.toResponse() })
+
+    @GetMapping("/{id}")
+    fun getOrderById(@PathVariable id: String): ResponseEntity<OrderDTO> =
+        ResponseEntity.status(HttpStatus.OK)
+            .body(orderService.findOrderById(id).toResponse())
 }
