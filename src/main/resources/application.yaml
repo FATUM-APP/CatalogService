@@ -73,3 +73,11 @@ app:
     issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+  # Canal en tiempo real (SSE) para que la GUI vea las órdenes cambiar sin recargar.
+  realtime:
+    enabled: true
+    timeout-ms: 1800000
+    # Debe ser menor que el idle timeout del ALB (60 s por defecto).
+    heartbeat-ms: 20000
+    max-connections-per-user: 5

@@ -14,13 +14,16 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.YearMonth
 import java.time.LocalDateTime
 import fatum.catalog.model.constant.OrderStatus
+import fatum.catalog.realtime.CalendarChange
+import fatum.catalog.realtime.CalendarRealtimePublisher
 import fatum.catalog.repository.OrderRepository
 
 @Service
 class ProviderUnavailableRangeService(
     private val userServiceClient: UserServiceClient,
     private val unavailableRangeRepository: UnavailableRangeRepository,
-    private val orderRepository: OrderRepository
+    private val orderRepository: OrderRepository,
+    private val calendar: CalendarRealtimePublisher
 ) {
     @Transactional
     fun establishUnavailability(request : CreateUnavailability){
@@ -29,6 +32,10 @@ class ProviderUnavailableRangeService(
         validateDates(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         handleOrdersInRange(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         unavailableRangeRepository.save(unavailability)
+        calendar.changed(
+            unavailability.providerId, CalendarChange.UNAVAILABLE_ADDED,
+            unavailability.startDate.toLocalDate(), unavailability.finalDate.toLocalDate()
+        )
     }
 
     @Transactional
@@ -38,6 +45,10 @@ class ProviderUnavailableRangeService(
         validateDates(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         handleOrdersInRange(unavailability.providerId, unavailability.startDate, unavailability.finalDate)
         unavailableRangeRepository.save(unavailability)
+        calendar.changed(
+            unavailability.providerId, CalendarChange.UNAVAILABLE_ADDED,
+            unavailability.startDate.toLocalDate(), unavailability.finalDate.toLocalDate()
+        )
     }
 
     @Transactional
@@ -48,6 +59,10 @@ class ProviderUnavailableRangeService(
         validateDates(unavailability.providerId, start, end,unavailability.id)
         unavailability.changeDates(start,end)
         unavailableRangeRepository.save(unavailability)
+        calendar.changed(
+            unavailability.providerId, CalendarChange.UNAVAILABLE_CHANGED,
+            start.toLocalDate(), end.toLocalDate()
+        )
     }
 
     @Transactional(readOnly = true)
@@ -73,7 +88,9 @@ class ProviderUnavailableRangeService(
 
     @Transactional
     fun deleteUnavailability(id: String){
-        unavailableRangeRepository.delete(getUnavailability(id))
+        val unavailability = getUnavailability(id)
+        unavailableRangeRepository.delete(unavailability)
+        calendar.changed(unavailability.providerId, CalendarChange.UNAVAILABLE_REMOVED)
     }
 
 

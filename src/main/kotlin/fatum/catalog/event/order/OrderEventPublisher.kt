@@ -1,12 +1,12 @@
 package fatum.catalog.event.order
 
 
-import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.OrderStatus
+import fatum.catalog.realtime.CalendarChange
+import fatum.catalog.realtime.sse.SseHub
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event
 import software.amazon.awssdk.services.eventbridgev2.EventBridgeV2Client
 import software.amazon.awssdk.services.eventbridgev2.model.PutEventsRequest
 import software.amazon.awssdk.services.eventbridgev2.model.PutEventsRequestEntry
@@ -19,7 +19,8 @@ import tools.jackson.databind.ObjectMapper
 class OrderEventPublisher(
     private val eventBridgeClient: EventBridgeV2Client,
     @Value("\${aws.eventbridge.bus-arn:}") private val eventBusArn: String,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val sseHub: SseHub
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -84,6 +85,24 @@ class OrderEventPublisher(
 
 
     private fun publish(type: OrderEventType, payload: Map<String, Any?>) {
+        val message = linkedMapOf<String, Any?>("type" to type.name).apply { putAll(payload) }
+
+        // Primero al navegador: el usuario ve el cambio sin esperar a EventBridge.
+        sseHub.publish(recipientsOf(payload).map(SseHub::userTopic), "order", message)
+
+        // Una orden ocupa o libera un hueco: el calendario del proveedor cambia para todos.
+        (payload["providerId"] as? String)?.let { providerId ->
+            sseHub.publish(
+                listOf(SseHub.calendarTopic(providerId)),
+                "calendar",
+                mapOf(
+                    "type" to "CALENDAR_CHANGED",
+                    "providerId" to providerId,
+                    "change" to CalendarChange.ORDER_UPDATED.name
+                )
+            )
+        }
+
         if (eventBusArn.isBlank()) {
             log.debug("aws.eventbridge.bus-arn vacío: no se publica {}", type)
             return
@@ -104,6 +123,12 @@ class OrderEventPublisher(
         reportFailures(type, response)
     }
 
+
+    /** Las dos partes de la orden. `ORDER_CREATED` solo trae al proveedor. */
+    private fun recipientsOf(payload: Map<String, Any?>): List<String> = listOfNotNull(
+        payload["clientId"] as? String,
+        payload["providerId"] as? String
+    )
 
     private fun reportFailures(type: OrderEventType, response: PutEventsResponse) {
         if (response.failedEntryCount() == null || response.failedEntryCount() == 0) return

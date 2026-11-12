@@ -1,5 +1,7 @@
 package fatum.catalog.service
 
+import fatum.catalog.realtime.CalendarRealtimePublisher
+
 import fatum.catalog.client.AddressDTO
 import fatum.catalog.client.M2User
 import fatum.catalog.client.UserServiceClient
@@ -42,6 +44,7 @@ class ProviderUnavailableRangeServiceTest {
     @Mock lateinit var unavailableRangeRepository: UnavailableRangeRepository
     @Mock lateinit var userServiceClient: UserServiceClient
     @Mock lateinit var orderRepository: OrderRepository
+    @Mock lateinit var calendar: CalendarRealtimePublisher
     @InjectMocks lateinit var service: ProviderUnavailableRangeService
 
     private val validUser = M2User(

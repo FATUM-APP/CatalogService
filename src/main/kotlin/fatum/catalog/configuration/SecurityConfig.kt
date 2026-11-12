@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver
 import org.springframework.security.oauth2.jwt.JwtValidators
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter
@@ -61,6 +62,7 @@ class SecurityConfig(
             auth.anyRequest().hasAnyRole(VERIFIED, PROFESSIONAL, ADMIN)
         }
         .oauth2ResourceServer { oauth2 ->
+            oauth2.bearerTokenResolver(bearerTokenResolver())
             oauth2.jwt { jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()) }
         }
         .build()
@@ -69,6 +71,14 @@ class SecurityConfig(
      * Cognito publica las llaves en `{issuer}/.well-known/jwks.json`.
      * Se arma la URL a mano para no depender del documento de descubrimiento al arrancar.
      */
+    /**
+     * `EventSource` no puede mandar cabeceras, así que además de `Authorization` se acepta
+     * `?access_token=`.
+     */
+    @Bean
+    fun bearerTokenResolver(): DefaultBearerTokenResolver =
+        DefaultBearerTokenResolver().apply { setAllowUriQueryParameter(true) }
+
     @Bean
     fun jwtDecoder(): JwtDecoder {
         val jwkSetUri = issuerUri.trimEnd('/') + "/.well-known/jwks.json"
