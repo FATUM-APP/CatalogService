@@ -2,29 +2,30 @@ package fatum.catalog.event.listener
 
 import fatum.catalog.dto.mapper.toNotification
 import fatum.catalog.event.SseEmitterRegistry
+import fatum.catalog.event.notification.order.OrderStatusChangedNotify
 import fatum.catalog.event.payload.order.OrderCancelled
+import fatum.catalog.event.payload.order.OrderConfirmationUpdated
 import fatum.catalog.event.payload.order.OrderCreated
 import fatum.catalog.event.payload.order.OrderStatusChanged
 import fatum.catalog.model.constant.OrderStatus
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
+import org.springframework.transaction.event.TransactionalEventListener
 
 @Component
 class OrderEventListener(
-    private val emitterRegistry: SseEmitterRegistry,
-    private val eventPublisher: ApplicationEventPublisher
+    private val emitterRegistry: SseEmitterRegistry
 ) {
 
-    @EventListener
+    @TransactionalEventListener
     fun onOrderCreated(event: OrderCreated) {
         emitterRegistry.sendToUser(
             event.providerId,
             "ORDER_CREATED",
-            event.toNotification())
+            event.toNotification()
+        )
     }
 
-    @EventListener
+    @TransactionalEventListener
     fun onStatusChanged(event: OrderStatusChanged) {
         val payload = event.toNotification()
         emitterRegistry.sendToUser(event.clientId, "ORDER_STATUS_CHANGED", payload)
@@ -32,33 +33,43 @@ class OrderEventListener(
         emitterRegistry.sendToTopic(
             "order:${event.orderId}",
             "ORDER_STATUS_CHANGED",
-            event.toNotification()
+            payload
         )
 
-        if (event.status == "OrderStatus.ACCEPTED") {
+        if (event.status == "ACCEPTED") {
             emitterRegistry.sendToTopic(
                 "calendar:${event.providerId}",
                 "SLOT_BOOKED",
-                event.toNotification()
+                payload
             )
         }
     }
 
-    @EventListener
+    @TransactionalEventListener
     fun onOrderCancelled(event: OrderCancelled) {
-        emitterRegistry.sendToUser(
-            event.providerId,
-            "ORDER_CANCELLED",
-            event.toNotification()
-        )
-
-        emitterRegistry.sendToUser(
-            event.clientId,
-            "ORDER_CANCELLED",
-            event.toNotification()
-        )
+        val payload = event.toNotification()
+        emitterRegistry.sendToUser(event.providerId, "ORDER_CANCELLED", payload)
+        emitterRegistry.sendToUser(event.clientId, "ORDER_CANCELLED", payload)
     }
 
+    @TransactionalEventListener
+    fun onConfirmationUpdated(event: OrderConfirmationUpdated) {
+        val payload = event.toNotification()
 
+        emitterRegistry.sendToUser(event.providerId, "ORDER_CONFIRMATION_UPDATED", payload)
+        emitterRegistry.sendToUser(event.clientId, "ORDER_CONFIRMATION_UPDATED", payload)
 
+        if (event.statusChanged && event.newStatus != null) {
+            emitterRegistry.sendToTopic(
+                "order:${event.orderId}",
+                "ORDER_STATUS_CHANGED",
+                OrderStatusChangedNotify(
+                    orderId = event.orderId,
+                    status = event.newStatus,
+                    estimatedTime = null,
+                    booking = null
+                )
+            )
+        }
+    }
 }

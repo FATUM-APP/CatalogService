@@ -1,6 +1,7 @@
 package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
+import fatum.catalog.dto.mapper.toConfirmationEvent
 import fatum.catalog.dto.mapper.toCreatedEvent
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.request.order.OrderResponse
@@ -102,11 +103,9 @@ class OrderService(
     @Transactional
     fun cancelProviderOrders(providerId : String,reason: String) {
         val pendingOrders = orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, OrderStatus.PENDING)
-        val ordersCancelled = mutableListOf<Order>()
         pendingOrders.forEach {
             it.changeStatus(OrderStatus.REJECTED, reason)
             it.update()
-            ordersCancelled.add(it)
         }
         orderRepository.saveAll(pendingOrders)
 
@@ -114,13 +113,12 @@ class OrderService(
         acceptedOrders.forEach {
             it.changeStatus(OrderStatus.CANCELLED, reason)
             it.update()
-            ordersCancelled.add(it)
         }
         orderRepository.saveAll(acceptedOrders)
 
-        eventPublisher.publishEvent(
-            ordersCancelled.map { it.toOrderCancelled() }
-        )
+        (pendingOrders + acceptedOrders).forEach {
+            eventPublisher.publishEvent(it.toOrderCancelled())
+        }
     }
 
     //==========================================CONFIRMATIONS=====================================================
@@ -133,13 +131,18 @@ class OrderService(
         validateNotResponded(order.startConfirmation, party)
 
         order.startConfirmation.confirm(party)
+        val statusChanged = order.startConfirmation.isConfirmed
 
-        if (order.startConfirmation.isConfirmed) {
+        if (statusChanged) {
             order.changeStatus(OrderStatus.DELIVERING)
             order.deliveryStartedAt = LocalDateTime.now()
         }
         order.update()
         orderRepository.save(order)
+
+        eventPublisher.publishEvent(
+            order.toConfirmationEvent("START", party, "CONFIRMED", statusChanged)
+        )
     }
 
     @Transactional
@@ -151,10 +154,16 @@ class OrderService(
 
         order.startConfirmation.deny(party)
 
-        if (order.startConfirmation.isContradicted)
+        val statusChanged = order.startConfirmation.isContradicted
+
+        if (statusChanged)
             order.changeStatus(OrderStatus.DISPUTED, reason)
         order.update()
         orderRepository.save(order)
+
+        eventPublisher.publishEvent(
+            order.toConfirmationEvent("START", party, "DENIED", statusChanged)
+        )
     }
 
     @Transactional
