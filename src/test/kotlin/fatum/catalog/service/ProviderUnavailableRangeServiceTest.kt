@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
+import org.springframework.context.ApplicationEventPublisher
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
@@ -42,6 +43,7 @@ class ProviderUnavailableRangeServiceTest {
     @Mock lateinit var unavailableRangeRepository: UnavailableRangeRepository
     @Mock lateinit var userServiceClient: UserServiceClient
     @Mock lateinit var orderRepository: OrderRepository
+    @Mock lateinit var eventPublisher: ApplicationEventPublisher
     @InjectMocks lateinit var service: ProviderUnavailableRangeService
 
     private val validUser = M2User(
@@ -103,7 +105,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 any(), any(), any(), any()
             )).thenReturn(emptyList())
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))
@@ -180,7 +182,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(listOf(existing))
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 any(), any(), any(), any()
             )).thenReturn(emptyList())
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))
@@ -206,7 +208,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 any(), any(), any(), any()
             )).thenReturn(emptyList())
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))
@@ -232,7 +234,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 "provider-123", OrderStatus.ACCEPTED, start, end
             )).thenReturn(listOf(createPendingOrder(start.plusHours(2))))
 
@@ -256,10 +258,10 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 "provider-123", OrderStatus.ACCEPTED, start, end
             )).thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 "provider-123", OrderStatus.PENDING, start, end
             )).thenReturn(listOf(pendingOrder))
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))
@@ -286,7 +288,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 any(), any(), any(), any()
             )).thenReturn(emptyList())
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))

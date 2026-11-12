@@ -29,6 +29,7 @@ class ClientFavoriteServiceTest {
 
     @Mock lateinit var favoriteRepository: ClientFavoriteRepository
     @Mock lateinit var catalogItemService: CatalogItemService
+    @Mock lateinit var metricsService: MetricsService
 
     private lateinit var service: ClientFavoriteService
     private lateinit var category: Category
@@ -36,7 +37,7 @@ class ClientFavoriteServiceTest {
 
     @BeforeEach
     fun setUp() {
-        service = ClientFavoriteService(favoriteRepository, catalogItemService)
+        service = ClientFavoriteService(favoriteRepository, catalogItemService, metricsService)
         category = Category("Belleza", SchedulingModel.SINGLE_SESSION)
         item = CatalogItem(
             providerId = "provider-1",

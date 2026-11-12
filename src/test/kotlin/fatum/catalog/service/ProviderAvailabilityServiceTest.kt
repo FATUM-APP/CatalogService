@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.InjectMocks
+import org.springframework.context.ApplicationEventPublisher
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
@@ -31,6 +32,7 @@ class ProviderAvailabilityServiceTest {
 
     @Mock lateinit var providerAvailabilityRepository: ProviderAvailabilityRepository
     @Mock lateinit var userServiceClient: UserServiceClient
+    @Mock lateinit var eventPublisher: ApplicationEventPublisher
     @InjectMocks lateinit var service: ProviderAvailabilityService
 
     private val validUser = M2User(
