@@ -58,3 +58,18 @@ catalog:
     storage-route: catalog-service:photo
   categories:
     logo-route: catalog-service:category-logo
+
+aws:
+  region: ${AWS_REGION:us-east-1}
+  eventbridge:
+    # ARN del bus al que se publican los hechos de órdenes.
+    # Si queda vacío no se publica nada (útil en local).
+    bus-arn: ${EVENTBRIDGE_BUS_ARN:}
+
+app:
+  security:
+    # SECURITY_ENABLED=false deja la API abierta para desarrollo local.
+    enabled: ${SECURITY_ENABLED:true}
+    issuer-uri: ${COGNITO_ISSUER_URI:https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XXXXXXXXX}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

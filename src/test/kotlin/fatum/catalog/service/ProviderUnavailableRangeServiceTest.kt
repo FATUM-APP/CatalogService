@@ -103,7 +103,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 any(), any(), any(), any()
             )).thenReturn(emptyList())
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))
@@ -180,7 +180,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(listOf(existing))
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 any(), any(), any(), any()
             )).thenReturn(emptyList())
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))
@@ -206,7 +206,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 any(), any(), any(), any()
             )).thenReturn(emptyList())
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))
@@ -232,7 +232,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 "provider-123", OrderStatus.ACCEPTED, start, end
             )).thenReturn(listOf(createPendingOrder(start.plusHours(2))))
 
@@ -256,10 +256,10 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 "provider-123", OrderStatus.ACCEPTED, start, end
             )).thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 "provider-123", OrderStatus.PENDING, start, end
             )).thenReturn(listOf(pendingOrder))
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))
@@ -286,7 +286,7 @@ class ProviderUnavailableRangeServiceTest {
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validUser)
             whenever(unavailableRangeRepository.findByProviderId("provider-123"))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetween(
+            whenever(orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
                 any(), any(), any(), any()
             )).thenReturn(emptyList())
             whenever(unavailableRangeRepository.save(any<ProviderUnavailableRange>()))

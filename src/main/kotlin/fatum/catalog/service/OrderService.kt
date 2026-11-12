@@ -6,6 +6,8 @@ import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
 
 import fatum.catalog.exception.CatalogErrorCode
+import fatum.catalog.event.order.ConfirmationType
+import fatum.catalog.event.order.OrderEventPublisher
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Order
@@ -28,6 +30,7 @@ class OrderService(
     private val providerAvailabilityService: ProviderAvailabilityService,
     private val providerUnavailableRangeService: ProviderUnavailableRangeService,
     private val catalogItemService: CatalogItemService,
+    private val orderEventPublisher: OrderEventPublisher,
 ) {
     private val gapTime: Int = 30
 
@@ -43,10 +46,12 @@ class OrderService(
             throw FatumServiceException(CatalogErrorCode.PROVIDER_UNAVAILABLE)
 
         val client = userServiceClient.getUserById(order.clientId)
-        orderRepository.save(order.toEntity(item, client))
-
-
-
+        val saved = orderRepository.save(order.toEntity(item, client))
+        orderEventPublisher.orderCreated(
+            orderId = saved.id!!,
+            providerId = saved.providerId,
+            catalogItemTitle = saved.catalogItem.title
+        )
     }
 
     //==========================================ACCEPT/REJECT=====================================================
@@ -61,6 +66,7 @@ class OrderService(
 
         val order = getOrder(response.orderId)
 
+
         if (order.status != OrderStatus.PENDING)
             throw FatumServiceException(CatalogErrorCode.INVALID_STATUS_TRANSITION)
 
@@ -72,8 +78,13 @@ class OrderService(
         order.update()
         orderRepository.save(order)
 
-
-
+        orderEventPublisher.statusChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            newStatus = order.status,
+            reason = response.reason
+        )
     }
 
     //==========================================CANCEL============================================================
@@ -84,6 +95,14 @@ class OrderService(
         order.changeStatus(OrderStatus.CANCELLED, reason)
         order.update()
         orderRepository.save(order)
+
+        orderEventPublisher.statusChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            newStatus = order.status,
+            reason = reason
+        )
 
     }
 
@@ -102,6 +121,16 @@ class OrderService(
             it.update()
         }
         orderRepository.saveAll(acceptedOrders)
+
+        (pendingOrders + acceptedOrders).forEach {
+            orderEventPublisher.statusChanged(
+                orderId = it.id!!,
+                clientId = it.clientId,
+                providerId = it.providerId,
+                newStatus = it.status,
+                reason = reason
+            )
+        }
 
 
     }
@@ -126,6 +155,15 @@ class OrderService(
         orderRepository.save(order)
 
 
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.START.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.startConfirmation.isConfirmed
+        )
     }
 
     @Transactional
@@ -145,6 +183,15 @@ class OrderService(
         orderRepository.save(order)
 
 
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.START.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.startConfirmation.isConfirmed
+        )
     }
 
     @Transactional
@@ -157,6 +204,15 @@ class OrderService(
         order.completionConfirmation.confirm(party)
         order.update()
         orderRepository.save(order)
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.START.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.startConfirmation.isConfirmed
+        )
     }
 
     @Transactional
@@ -174,6 +230,15 @@ class OrderService(
             order.changeStatus(OrderStatus.NOT_DELIVERED, reason)
         order.update()
         orderRepository.save(order)
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.START.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.startConfirmation.isConfirmed
+        )
     }
 
     @Transactional
@@ -192,6 +257,15 @@ class OrderService(
 
         order.update()
         orderRepository.save(order)
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.START.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.startConfirmation.isConfirmed
+        )
     }
 
     @Transactional
@@ -210,6 +284,15 @@ class OrderService(
 
         order.update()
         orderRepository.save(order)
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.START.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.startConfirmation.isConfirmed
+        )
     }
 
     //==========================================READ ONLY=========================================================
