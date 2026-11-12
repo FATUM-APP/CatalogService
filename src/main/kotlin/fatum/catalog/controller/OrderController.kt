@@ -55,14 +55,15 @@ class OrderController(
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 
-    @PutMapping("/cancel/{providerId}}")
+    @PutMapping("/cancel/provider/{providerId}")
     fun cancelProviderOrders(
         @PathVariable providerId: String,
         @RequestBody body: UpdateReason,
     ): ResponseEntity<Void> {
-        orderService.cancel(providerId.trim(),body.reason)
+        orderService.cancelProviderOrders(providerId.trim(), body.reason)
         return ResponseEntity.status(HttpStatus.OK).build()
     }
+
 
 
     @PutMapping("/confirm/start/{orderId}")

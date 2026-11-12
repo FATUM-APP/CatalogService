@@ -113,16 +113,19 @@ class ProviderUnavailableRangeService(
         unavailableRangeRepository.findByProviderId(providerId)
 
     private fun handleOrdersInRange(providerId: String, start: LocalDateTime, end: LocalDateTime) {
-        val acceptedOrders = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+        val acceptedOrders = orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
             providerId, OrderStatus.ACCEPTED, start, end
         )
         if (acceptedOrders.isNotEmpty())
             throw FatumServiceException(CatalogErrorCode.ACCEPTED_ORDERS_EXIST)
 
-        val pendingOrders = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+        val pendingOrders = orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
             providerId, OrderStatus.PENDING, start, end
         )
-        pendingOrders.forEach { it.changeStatus(OrderStatus.REJECTED, "Provider marked as unavailable") }
+        pendingOrders.forEach {
+            it.changeStatus(OrderStatus.REJECTED, "Provider marked as unavailable")
+            it.update()
+        }
         orderRepository.saveAll(pendingOrders)
     }
 
