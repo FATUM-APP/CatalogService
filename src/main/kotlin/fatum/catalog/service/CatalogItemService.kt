@@ -59,8 +59,8 @@ class CatalogItemService(
         getById(id, status)
 
     @Transactional(readOnly = true)
-    fun findByProviderAndCategory(providerId: String, categoryName: String? = null) : List<CatalogItem> =
-        getByProviderAndCategory(providerId, categoryName)
+    fun findByProviderAndCategory(providerId: String, categoryName: String? = null, status : ServiceStatus? = null) : List<CatalogItem> =
+        getByProviderAndCategory(providerId, categoryName, status)
 
     /**
      * Searches catalog items by title
@@ -222,9 +222,13 @@ class CatalogItemService(
             categoryName = categoryName,
             true
         )
-    private fun getByProviderAndCategory(providerId: String, categoryName: String? = null) : List<CatalogItem> {
+    private fun getByProviderAndCategory(
+        providerId: String,
+        categoryName: String? = null,
+        serviceStatus: ServiceStatus? = null
+        ) : List<CatalogItem> {
         categoryName?.let { categoryService.findCategory(name = categoryName, isAble = true) }
-        return catalogItemRepository.findByProviderAndOptionalCategory(providerId, categoryName)
+        return catalogItemRepository.findByProviderAndOptionalCategory(providerId, categoryName, serviceStatus)
     }
 
 

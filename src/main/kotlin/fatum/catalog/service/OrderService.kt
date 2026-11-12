@@ -41,6 +41,8 @@ class OrderService(
         validateUser(order.clientId)
         val item = getService(order.serviceId)
         validateAnswers(item, order.answers)
+        if (order.clientId == item.providerId)
+            throw FatumServiceException(CatalogErrorCode.PROVIDER_AND_CLIENT)
 
         if (!providerIsFree(item.providerId, order.booking))
             throw FatumServiceException(CatalogErrorCode.PROVIDER_UNAVAILABLE)

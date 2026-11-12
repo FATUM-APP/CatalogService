@@ -35,6 +35,7 @@ fun CatalogItem.toDto(): ItemResponse =
         id = this.id,
         title = this.title,
         description = this.description,
+        status = this.status.name,
         providerName = this.providerName,
         providerUsername = this.providerUsername,
         basePrice = this.basePrice.toPlainString(),

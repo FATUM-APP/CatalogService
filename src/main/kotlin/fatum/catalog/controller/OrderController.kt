@@ -1,10 +1,14 @@
 package fatum.catalog.controller
 
+import fatum.catalog.dto.mapper.toClient
+import fatum.catalog.dto.mapper.toProvider
 import fatum.catalog.dto.mapper.toResponse
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.request.order.UpdateReason
 import fatum.catalog.dto.request.order.OrderResponse
+import fatum.catalog.dto.response.order.ClientOrder
 import fatum.catalog.dto.response.order.OrderDTO
+import fatum.catalog.dto.response.order.ProviderOrder
 import fatum.catalog.model.Order
 import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.OrderStatus
@@ -129,9 +133,9 @@ class OrderController(
     fun getOrdersByProvider(
         @RequestParam providerId: String,
         @RequestParam(required = false) status: OrderStatus?
-    ): ResponseEntity<List<OrderDTO>> =
+    ): ResponseEntity<List<ProviderOrder>> =
         ResponseEntity.status(HttpStatus.OK)
-            .body(orderService.findOrdersByProvider(providerId, status).map { it.toResponse() })
+            .body(orderService.findOrdersByProvider(providerId, status).map { it.toProvider() })
 
     @GetMapping("/service")
     fun getOrdersByService(
@@ -145,9 +149,9 @@ class OrderController(
     fun getOrdersByClient(
         @RequestParam clientId: String,
         @RequestParam(required = false) status: OrderStatus?
-    ): ResponseEntity<List<OrderDTO>> =
+    ): ResponseEntity<List<ClientOrder>> =
         ResponseEntity.status(HttpStatus.OK)
-            .body(orderService.findOrdersByClient(clientId, status).map { it.toResponse() })
+            .body(orderService.findOrdersByClient(clientId, status).map { it.toClient() })
 
     @GetMapping("/{id}")
     fun getOrderById(@PathVariable id: String): ResponseEntity<OrderDTO> =

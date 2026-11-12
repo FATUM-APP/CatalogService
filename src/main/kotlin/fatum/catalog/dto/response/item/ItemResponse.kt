@@ -6,6 +6,7 @@ import jakarta.validation.Valid
 data class ItemResponse(
     val id: String?,
     val title: String,
+    val status: String,
     val description: String?,
     val providerName: String,
     val providerUsername: String,

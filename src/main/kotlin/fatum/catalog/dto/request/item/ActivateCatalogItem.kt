@@ -1,7 +1,9 @@
 package fatum.catalog.dto.request.item
 
 data class ActivateCatalogItem(
-    private val _id: String
+    var id: String
 ){
-    val id = _id.trim()
+    init{
+        id = id.trim()
+    }
 }

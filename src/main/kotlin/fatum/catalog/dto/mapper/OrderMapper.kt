@@ -2,8 +2,10 @@ package fatum.catalog.dto.mapper
 
 import fatum.catalog.client.M2User
 import fatum.catalog.dto.request.order.BookService
+import fatum.catalog.dto.response.order.ClientOrder
 import fatum.catalog.dto.response.order.DualConfirmationResponse
 import fatum.catalog.dto.response.order.OrderDTO
+import fatum.catalog.dto.response.order.ProviderOrder
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Order
 import fatum.catalog.model.vo.DualConfirmation
@@ -56,6 +58,36 @@ fun Order.toResponse() : OrderDTO =
         answers = this.answers,
         requirements = this.requirements,
         deliveryStartedAt = this.deliveryStartedAt,
+        startConfirmation = this.startConfirmation.toResponse(),
+        completionConfirmation = this.completionConfirmation.toResponse(),
+        paymentConfirmation = this.paymentConfirmation.toResponse(),
+        reason = this.reason,
+        status = this.status.name
+    )
+
+fun Order.toClient() =
+    ClientOrder(
+        id = this.id,
+        providerUsername = this.catalogItem.providerUsername,
+        catalogItemTitle = this.catalogItem.title,
+        booking = this.booking,
+        negotiatedPrice = this.negotiatedPrice.toPlainString(),
+        estimatedTime = this.estimatedTime,
+        startConfirmation = this.startConfirmation.toResponse(),
+        completionConfirmation = this.completionConfirmation.toResponse(),
+        paymentConfirmation = this.paymentConfirmation.toResponse(),
+        reason = this.reason,
+        status = this.status.name
+    )
+
+fun Order.toProvider() =
+    ProviderOrder(
+        id = this.id,
+        clientUsername = this.catalogItem.providerUsername,
+        catalogItemTitle = this.catalogItem.title,
+        booking = this.booking,
+        negotiatedPrice = this.negotiatedPrice.toPlainString(),
+        estimatedTime = this.estimatedTime,
         startConfirmation = this.startConfirmation.toResponse(),
         completionConfirmation = this.completionConfirmation.toResponse(),
         paymentConfirmation = this.paymentConfirmation.toResponse(),

@@ -120,12 +120,13 @@ class CatalogItemController(
     @GetMapping("/provider")
     fun getProviderCatalogItems(
         @RequestParam providerId: String,
-        @RequestParam(required = false) category: String?
+        @RequestParam(required = false) category: String?,
+        @RequestParam(required = false) status: ServiceStatus?
     ) : ResponseEntity<List<ItemResponse>> =
         ResponseEntity.status(HttpStatus.OK).body(
-            catalogItemService.findByProviderAndCategory(providerId,category).map { it.toDto() }
+            catalogItemService.findByProviderAndCategory(providerId, category, status)
+                .map { it.toDto() }
         )
-
     //==========================================UPDATE==============================================
 
     @PutMapping("/update", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
