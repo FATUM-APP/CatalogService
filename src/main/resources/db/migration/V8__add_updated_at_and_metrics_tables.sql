@@ -62,5 +62,5 @@ SELECT id, 0, 0, 0, 0, 0, 0, 0 FROM services;
 -- Populate favorite_count from existing favorites
 UPDATE service_metrics sm
 SET favorite_count = (
-    SELECT COUNT(*) FROM client_favorites cf WHERE cf.catalog_item_id = sm.service_id
+    SELECT COUNT(*) FROM client_favorites cf WHERE cf.service_id = sm.service_id
 );
