@@ -1,14 +1,10 @@
 package fatum.catalog.service
 
 import fatum.catalog.client.UserServiceClient
-import fatum.catalog.dto.mapper.toConfirmationEvent
-import fatum.catalog.dto.mapper.toCreatedEvent
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
-import fatum.catalog.dto.mapper.toOrderCancelled
-import fatum.catalog.dto.mapper.toStatusChangedEvent
-import fatum.catalog.event.payload.order.OrderCreated
+
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -32,7 +28,6 @@ class OrderService(
     private val providerAvailabilityService: ProviderAvailabilityService,
     private val providerUnavailableRangeService: ProviderUnavailableRangeService,
     private val catalogItemService: CatalogItemService,
-    private val eventPublisher: ApplicationEventPublisher
 ) {
     private val gapTime: Int = 30
 
@@ -48,11 +43,9 @@ class OrderService(
             throw FatumServiceException(CatalogErrorCode.PROVIDER_UNAVAILABLE)
 
         val client = userServiceClient.getUserById(order.clientId)
-        val order = orderRepository.save(order.toEntity(item, client))
+        orderRepository.save(order.toEntity(item, client))
 
-        eventPublisher.publishEvent(
-            order.toCreatedEvent()
-        )
+
 
     }
 
@@ -79,9 +72,6 @@ class OrderService(
         order.update()
         orderRepository.save(order)
 
-        eventPublisher.publishEvent(
-            order.toStatusChangedEvent()
-        )
 
 
     }
@@ -95,9 +85,6 @@ class OrderService(
         order.update()
         orderRepository.save(order)
 
-        eventPublisher.publishEvent(
-            order.toOrderCancelled()
-        )
     }
 
     @Transactional
@@ -116,9 +103,7 @@ class OrderService(
         }
         orderRepository.saveAll(acceptedOrders)
 
-        (pendingOrders + acceptedOrders).forEach {
-            eventPublisher.publishEvent(it.toOrderCancelled())
-        }
+
     }
 
     //==========================================CONFIRMATIONS=====================================================
@@ -140,9 +125,7 @@ class OrderService(
         order.update()
         orderRepository.save(order)
 
-        eventPublisher.publishEvent(
-            order.toConfirmationEvent("START", party, "CONFIRMED", statusChanged)
-        )
+
     }
 
     @Transactional
@@ -161,9 +144,7 @@ class OrderService(
         order.update()
         orderRepository.save(order)
 
-        eventPublisher.publishEvent(
-            order.toConfirmationEvent("START", party, "DENIED", statusChanged)
-        )
+
     }
 
     @Transactional
