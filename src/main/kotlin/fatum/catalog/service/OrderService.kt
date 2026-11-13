@@ -4,16 +4,19 @@ import fatum.catalog.client.UserServiceClient
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
+import fatum.catalog.dto.response.order.AvailabilityResponse
 
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.event.order.OrderEventPublisher
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Order
+import fatum.catalog.model.constant.AvailabilityReason
 import fatum.catalog.model.constant.ConfirmationStage
 import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.OrderStatus
 import fatum.catalog.model.constant.ServiceStatus
+import fatum.catalog.model.constant.extension.toErrorCode
 import fatum.catalog.model.vo.QuestionAnswer
 import fatum.catalog.repository.OrderRepository
 import org.springframework.context.ApplicationEventPublisher
@@ -43,8 +46,10 @@ class OrderService(
         if (order.clientId == item.providerId)
             throw FatumServiceException(CatalogErrorCode.PROVIDER_AND_CLIENT)
 
-        if (!providerIsFree(item.providerId, order.booking))
-            throw FatumServiceException(CatalogErrorCode.PROVIDER_UNAVAILABLE)
+        val unavailable = unavailableReason(item.providerId, order.booking, item.defaultEstimatedTime ?: gapTime)
+        if (unavailable != null)
+            throw FatumServiceException(unavailable.toErrorCode())
+
 
         val client = userServiceClient.getUserById(order.clientId)
         val saved = orderRepository.save(order.toEntity(item, client))
@@ -61,21 +66,19 @@ class OrderService(
     fun acceptOrReject(response: OrderResponse) {
         if (response.status !in listOf(OrderStatus.ACCEPTED, OrderStatus.REJECTED))
             throw FatumServiceException(CatalogErrorCode.INVALID_RESPONSE)
-
         if (response.status == OrderStatus.ACCEPTED && response.estimatedTime == null)
             throw FatumServiceException(CatalogErrorCode.INVALID_RESPONSE)
 
         val order = getOrder(response.orderId)
-
-
         if (order.status != OrderStatus.PENDING)
             throw FatumServiceException(CatalogErrorCode.INVALID_STATUS_TRANSITION)
-
         if (response.providerId != order.providerId)
             throw FatumServiceException(CatalogErrorCode.FORBIDDEN)
 
-        order.changeStatus(response.status, response.reason)
         order.estimatedTime = response.estimatedTime
+        if (response.status == OrderStatus.ACCEPTED)
+            ensureNoOverlap(order)
+        order.changeStatus(response.status, response.reason)
         order.update()
         orderRepository.save(order)
 
@@ -87,6 +90,7 @@ class OrderService(
             reason = response.reason
         )
     }
+
 
     //==========================================CANCEL============================================================
 
@@ -297,42 +301,93 @@ class OrderService(
             throw FatumServiceException(CatalogErrorCode.MISSING_ANSWERS)
     }
 
-    private fun providerIsFree(providerId: String, booking: LocalDateTime): Boolean {
-        reviewOrderOverlap(providerId, booking)
-        val inUnavailability = providerUnavailableRangeService.scheduledDateInRange(providerId, booking)
-        if (inUnavailability || timeGapPolicy(booking, LocalDateTime.now())) return false
-        return providerAvailabilityService.providerIsAvailable(
-            providerId, booking.dayOfWeek, booking.toLocalTime()
+
+    @Transactional(readOnly = true)
+    fun checkAvailability(
+        providerId: String,
+        booking: LocalDateTime,
+        durationMinutes: Int? = null
+    ): AvailabilityResponse {
+        val duration = durationMinutes?.takeIf { it > 0 } ?: gapTime
+        val reason = unavailableReason(providerId, booking, duration)
+        return AvailabilityResponse(
+            providerId = providerId,
+            booking = booking,
+            durationMinutes = duration,
+            endsAt = booking.plusMinutes(duration.toLong()),
+            available = reason == null,
+            reason = reason
         )
     }
 
-    private fun reviewOrderOverlap(providerId: String, booking: LocalDateTime) {
-        val providerOrders = orderRepository.findByProviderIdOrderByUpdatedAtDesc(providerId)
-        val overlap = providerOrders.any {
-            (it.status == OrderStatus.ACCEPTED || it.status == OrderStatus.DELIVERING)
-                    &&
-            timeGapPolicy(it.booking, booking)
-        }
-        if (overlap) throw FatumServiceException(CatalogErrorCode.OVERLAPPING_RANGE)
+
+    private fun unavailableReason(
+        providerId: String,
+        booking: LocalDateTime,
+        durationMinutes: Int
+    ): AvailabilityReason? {
+        if (booking.isBefore(LocalDateTime.now().plusMinutes(gapTime.toLong())))
+            return AvailabilityReason.LEAD_TIME
+        if (providerUnavailableRangeService.scheduledDateInRange(providerId, booking))
+            return AvailabilityReason.UNAVAILABLE_RANGE
+        if (hasOverlap(providerId, booking, durationMinutes))
+            return AvailabilityReason.OVERLAP
+        if (!fitsSchedule(providerId, booking, durationMinutes))
+            return AvailabilityReason.OUT_OF_SCHEDULE
+        return null
     }
 
-    private fun timeGapPolicy(time1: LocalDateTime, time2: LocalDateTime): Boolean {
-        return Duration.between(time1, time2).abs().toMinutes() < gapTime
+    private fun fitsSchedule(providerId: String, booking: LocalDateTime, durationMinutes: Int): Boolean {
+        val end = booking.plusMinutes(durationMinutes.toLong())
+        // Un turno que cruza la medianoche no entra en el horario de ningún día.
+        if (end.toLocalDate() != booking.toLocalDate()) return false
+        return providerAvailabilityService.providerIsAvailable(
+            providerId, booking.dayOfWeek, booking.toLocalTime(), end.toLocalTime()
+        )
+    }
+
+
+    private fun hasOverlap(
+        providerId: String,
+        booking: LocalDateTime,
+        durationMinutes: Int,
+        excludeOrderId: String? = null
+    ): Boolean {
+        val requestedEnd = booking.plusMinutes(durationMinutes.toLong())
+        return orderRepository.findByProviderIdOrderByUpdatedAtDesc(providerId).any { existing ->
+            existing.id != excludeOrderId &&
+                    existing.status in BLOCKING_STATUSES &&
+                    existing.booking.isBefore(requestedEnd) &&
+                    booking.isBefore(existing.endsAt)
+        }
+    }
+
+
+    private fun ensureNoOverlap(order: Order) {
+        val duration = order.estimatedTime ?: gapTime
+        if (hasOverlap(order.providerId, order.booking, duration, excludeOrderId = order.id))
+            throw FatumServiceException(CatalogErrorCode.OVERLAPPING_RANGE)
     }
 
     private fun getActiveOrders(
         providerId: String,
         start: LocalDateTime,
         end: LocalDateTime
-    ): List<Order> {
+    ): List<Order> = VISIBLE_STATUSES
+        .flatMap { status ->
+            orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
+                providerId, status, start, end
+            )
+        }
+        .sortedByDescending { it.updatedAt }
 
-        val accepted = orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
-            providerId, OrderStatus.ACCEPTED, start, end
-        )
-        val delivering = orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
-            providerId, OrderStatus.DELIVERING, start, end
-        )
-        return accepted + delivering
+    companion object {
+
+        private val BLOCKING_STATUSES = setOf(OrderStatus.ACCEPTED, OrderStatus.DELIVERING)
+
+        private val VISIBLE_STATUSES = setOf(OrderStatus.PENDING, OrderStatus.ACCEPTED, OrderStatus.DELIVERING)
     }
-
 }
+
+
+

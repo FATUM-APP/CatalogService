@@ -94,6 +94,9 @@ class Order(
             field = value
         }
 
+    val endsAt: LocalDateTime
+        get() = booking.plusMinutes((estimatedTime ?: DEFAULT_DURATION_MINUTES).toLong())
+
     @Column(name = "DELIVERY_STARTED_AT")
     var deliveryStartedAt: LocalDateTime? = null
 
@@ -290,6 +293,7 @@ class Order(
     override fun hashCode(): Int = javaClass.hashCode()
 
     companion object {
+        const val DEFAULT_DURATION_MINUTES = 30
         private val NO_REASON_REQUIRED = setOf(
             OrderStatus.PENDING,
             OrderStatus.ACCEPTED,

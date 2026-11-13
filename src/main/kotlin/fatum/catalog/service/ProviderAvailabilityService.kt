@@ -68,11 +68,22 @@ class ProviderAvailabilityService(
         getAvailability(providerId, day)
             ?: throw FatumServiceException(CatalogErrorCode.AVAILABILITY_NOT_FOUND)
 
+
+    @Transactional(readOnly = true)
+    fun providerIsAvailable(
+        providerId: String,
+        day: DayOfWeek,
+        start: LocalTime,
+        end: LocalTime
+    ): Boolean = getAvailability(providerId, day)?.let {
+        !start.isBefore(it.initialTime) && !end.isAfter(it.finalTime)
+    } ?: false
+
+
     @Transactional(readOnly = true)
     fun providerIsAvailable(providerId: String, day: DayOfWeek, time: LocalTime): Boolean =
-        getAvailability(providerId, day)?.let {
-            !time.isBefore(it.initialTime) && !time.isAfter(it.finalTime)
-        } ?: false
+        providerIsAvailable(providerId, day, time, time)
+
 
 
     @Transactional(readOnly = true)

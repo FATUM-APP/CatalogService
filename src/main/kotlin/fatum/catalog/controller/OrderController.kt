@@ -6,6 +6,7 @@ import fatum.catalog.dto.mapper.toResponse
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.request.order.UpdateReason
 import fatum.catalog.dto.request.order.OrderResponse
+import fatum.catalog.dto.response.order.AvailabilityResponse
 import fatum.catalog.dto.response.order.ClientOrder
 import fatum.catalog.dto.response.order.OrderDTO
 import fatum.catalog.dto.response.order.ProviderOrder
@@ -14,6 +15,7 @@ import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.OrderStatus
 import fatum.catalog.service.OrderService
 import jakarta.validation.Valid
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.LocalDateTime
 
 @RestController
 @RequestMapping("/order")
@@ -131,6 +134,17 @@ class OrderController(
     }
 
     //==========================================READ================================================
+
+
+    @GetMapping("/availability")
+    fun checkAvailability(
+        @RequestParam providerId: String,
+        @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) booking: LocalDateTime,
+        @RequestParam(required = false) durationMinutes: Int?
+    ): ResponseEntity<AvailabilityResponse> =
+        ResponseEntity.status(HttpStatus.OK)
+            .body(orderService.checkAvailability(providerId.trim(), booking, durationMinutes))
+
 
     @GetMapping("/provider")
     fun getOrdersByProvider(
