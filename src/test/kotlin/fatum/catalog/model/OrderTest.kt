@@ -663,4 +663,34 @@ class OrderTest {
             assertNotEquals(order, "not an order")
         }
     }
+
+    @Nested
+    inner class EndsAt {
+
+        @Test
+        fun `should add the estimated time to the booking`() {
+            val order = createOrder(booking = LocalDateTime.of(2026, 11, 15, 10, 0))
+            order.estimatedTime = 90
+
+            assertEquals(LocalDateTime.of(2026, 11, 15, 11, 30), order.endsAt)
+        }
+
+        @Test
+        fun `should use the default duration when estimated time is null`() {
+            val order = createOrder(booking = LocalDateTime.of(2026, 11, 15, 10, 0))
+            order.estimatedTime = null
+
+            assertEquals(LocalDateTime.of(2026, 11, 15, 10, 30), order.endsAt)
+        }
+
+        @Test
+        fun `should not move the booking`() {
+            val order = createOrder(booking = LocalDateTime.of(2026, 11, 15, 10, 0))
+            order.estimatedTime = 45
+
+            order.endsAt
+
+            assertEquals(LocalDateTime.of(2026, 11, 15, 10, 0), order.booking)
+        }
+    }
 }

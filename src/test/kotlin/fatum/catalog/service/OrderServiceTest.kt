@@ -11,6 +11,7 @@ import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Category
 import fatum.catalog.model.Order
+import fatum.catalog.model.constant.AvailabilityReason
 import fatum.catalog.model.constant.ConfirmationStage
 import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.JobType
@@ -151,7 +152,9 @@ class OrderServiceTest {
             whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking))
                 .thenReturn(false)
             whenever(providerAvailabilityService.providerIsAvailable(
-                "provider-123", booking.dayOfWeek, booking.toLocalTime()
+                "provider-123", booking.dayOfWeek,
+                booking.toLocalTime(),
+                booking.plusMinutes(catalogItem.defaultEstimatedTime!!.toLong()).toLocalTime()
             )).thenReturn(true)
         }
 
@@ -234,7 +237,9 @@ class OrderServiceTest {
             whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking))
                 .thenReturn(false)
             whenever(providerAvailabilityService.providerIsAvailable(
-                "provider-123", booking.dayOfWeek, booking.toLocalTime()
+                "provider-123", booking.dayOfWeek,
+                booking.toLocalTime(),
+                booking.plusMinutes(30).toLocalTime()
             )).thenReturn(true)
             whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
@@ -310,7 +315,6 @@ class OrderServiceTest {
             )
             whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
             whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
-            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(emptyList())
             whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking))
                 .thenReturn(true)
 
@@ -331,7 +335,9 @@ class OrderServiceTest {
             whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking))
                 .thenReturn(false)
             whenever(providerAvailabilityService.providerIsAvailable(
-                "provider-123", booking.dayOfWeek, booking.toLocalTime()
+                "provider-123", booking.dayOfWeek,
+                booking.toLocalTime(),
+                booking.plusMinutes(catalogItem.defaultEstimatedTime!!.toLong()).toLocalTime()
             )).thenReturn(false)
 
             val ex = assertThrows<FatumServiceException> { service.book(request) }
@@ -1349,6 +1355,298 @@ class OrderServiceTest {
             val result = service.findOrdersByClient("client-999")
 
             assertTrue(result.isEmpty())
+        }
+    }
+
+    //==========================================AVAILABILITY=====================================================
+
+    @Nested
+    inner class Availability {
+
+        private val slot = LocalDateTime.of(2027, 6, 15, 10, 0)
+
+        private fun stubFreeSlot(durationMinutes: Long = 60) {
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(emptyList())
+            whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", slot)).thenReturn(false)
+            whenever(providerAvailabilityService.providerIsAvailable(
+                "provider-123", slot.dayOfWeek, slot.toLocalTime(), slot.plusMinutes(durationMinutes).toLocalTime()
+            )).thenReturn(true)
+        }
+
+        @Test
+        fun `should report available when nothing blocks the slot`() {
+            stubFreeSlot()
+
+            val result = service.checkAvailability("provider-123", slot, 60)
+
+            assertAll(
+                { assertTrue(result.available) },
+                { assertNull(result.reason) },
+                { assertEquals(60, result.durationMinutes) },
+                { assertEquals(slot.plusMinutes(60), result.endsAt) }
+            )
+        }
+
+        @Test
+        fun `should assume the default duration when none is given`() {
+            stubFreeSlot(durationMinutes = 30)
+
+            val result = service.checkAvailability("provider-123", slot)
+
+            assertAll(
+                { assertEquals(30, result.durationMinutes) },
+                { assertEquals(slot.plusMinutes(30), result.endsAt) }
+            )
+        }
+
+        @Test
+        fun `should report LEAD_TIME when the slot is too close`() {
+            val soon = LocalDateTime.now().plusMinutes(10)
+
+            val result = service.checkAvailability("provider-123", soon, 60)
+
+            assertAll(
+                { assertFalse(result.available) },
+                { assertEquals(AvailabilityReason.LEAD_TIME, result.reason) }
+            )
+        }
+
+        @Test
+        fun `should report UNAVAILABLE_RANGE when the provider blocked the day`() {
+            whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", slot)).thenReturn(true)
+
+            val result = service.checkAvailability("provider-123", slot, 60)
+
+            assertAll(
+                { assertFalse(result.available) },
+                { assertEquals(AvailabilityReason.UNAVAILABLE_RANGE, result.reason) }
+            )
+        }
+
+        @Test
+        fun `should report OVERLAP when an accepted order occupies the slot`() {
+            val accepted = createOrder(booking = slot.plusMinutes(30))
+            setOrderId(accepted, "order-2")
+            setOrderStatus(accepted, OrderStatus.ACCEPTED)
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(listOf(accepted))
+            whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", slot)).thenReturn(false)
+
+            val result = service.checkAvailability("provider-123", slot, 60)
+
+            assertAll(
+                { assertFalse(result.available) },
+                { assertEquals(AvailabilityReason.OVERLAP, result.reason) }
+            )
+        }
+
+        @Test
+        fun `should ignore pending requests when looking for overlaps`() {
+            val pending = createOrder(booking = slot)
+            setOrderId(pending, "order-2")
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(listOf(pending))
+            whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", slot)).thenReturn(false)
+            whenever(providerAvailabilityService.providerIsAvailable(
+                "provider-123", slot.dayOfWeek, slot.toLocalTime(), slot.plusMinutes(60).toLocalTime()
+            )).thenReturn(true)
+
+            assertTrue(service.checkAvailability("provider-123", slot, 60).available)
+        }
+
+        @Test
+        fun `should report OUT_OF_SCHEDULE when the slot does not fit the weekly schedule`() {
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(emptyList())
+            whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", slot)).thenReturn(false)
+            whenever(providerAvailabilityService.providerIsAvailable(
+                "provider-123", slot.dayOfWeek, slot.toLocalTime(), slot.plusMinutes(60).toLocalTime()
+            )).thenReturn(false)
+
+            val result = service.checkAvailability("provider-123", slot, 60)
+
+            assertEquals(AvailabilityReason.OUT_OF_SCHEDULE, result.reason)
+        }
+
+        @Test
+        fun `should report OUT_OF_SCHEDULE when the slot crosses midnight`() {
+            val late = LocalDateTime.of(2027, 6, 15, 23, 30)
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(emptyList())
+            whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", late)).thenReturn(false)
+
+            val result = service.checkAvailability("provider-123", late, 60)
+
+            assertEquals(AvailabilityReason.OUT_OF_SCHEDULE, result.reason)
+        }
+    }
+
+    //==========================================BOOKING OVERLAP=================================================
+
+    @Nested
+    inner class BookOverlap {
+
+        private val slot = LocalDateTime.of(2027, 6, 15, 10, 0)
+
+        private fun request(booking: LocalDateTime = slot) = BookService(
+            clientId = "client-456", booking = booking, serviceId = "service-1", answers = emptySet()
+        )
+
+        private fun stubCatalogAndUser() {
+            whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
+            whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
+        }
+
+        private fun stubSave() {
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+        }
+
+        private fun stubFreeSchedule(booking: LocalDateTime, durationMinutes: Long = 60) {
+            whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking)).thenReturn(false)
+            whenever(providerAvailabilityService.providerIsAvailable(
+                "provider-123", booking.dayOfWeek, booking.toLocalTime(), booking.plusMinutes(durationMinutes).toLocalTime()
+            )).thenReturn(true)
+        }
+
+        @Test
+        fun `should throw OVERLAPPING_RANGE when the slot is taken by an accepted order`() {
+            val accepted = createOrder(booking = slot.plusMinutes(30))
+            setOrderId(accepted, "order-2")
+            setOrderStatus(accepted, OrderStatus.ACCEPTED)
+            stubCatalogAndUser()
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(listOf(accepted))
+
+            val ex = assertThrows<FatumServiceException> { service.book(request()) }
+
+            assertEquals(CatalogErrorCode.OVERLAPPING_RANGE, ex.errorCode)
+        }
+
+        @Test
+        fun `should allow several pending requests at the same time`() {
+            val pending = createOrder(booking = slot)
+            setOrderId(pending, "order-2")
+            stubCatalogAndUser()
+            stubSave()
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(listOf(pending))
+            stubFreeSchedule(slot)
+
+            service.book(request())
+
+            verify(orderRepository).save(any())
+        }
+
+        @Test
+        fun `should not overlap when the accepted order already ended`() {
+            val accepted = createOrder(booking = slot)
+            setOrderId(accepted, "order-2")
+            setOrderStatus(accepted, OrderStatus.ACCEPTED)
+            val later = slot.plusHours(1).plusMinutes(30)
+            stubCatalogAndUser()
+            stubSave()
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(listOf(accepted))
+            stubFreeSchedule(later)
+
+            service.book(request(later))
+
+            verify(orderRepository).save(any())
+        }
+
+        @Test
+        fun `should throw PROVIDER_UNAVAILABLE when the slot is too close`() {
+            stubCatalogAndUser()
+            val soon = LocalDateTime.now().plusMinutes(5)
+
+            val ex = assertThrows<FatumServiceException> { service.book(request(soon)) }
+
+            assertEquals(CatalogErrorCode.PROVIDER_UNAVAILABLE, ex.errorCode)
+        }
+    }
+
+    //==========================================ACCEPT OVERLAP===================================================
+
+    @Nested
+    inner class AcceptOverlap {
+
+        private val slot = LocalDateTime.of(2027, 6, 15, 10, 0)
+
+        private fun accept(estimatedTime: Int = 60) = OrderResponse(
+            orderId = "order-1", providerId = "provider-123",
+            status = OrderStatus.ACCEPTED, estimatedTime = estimatedTime
+        )
+
+        private fun acceptedOrder(booking: LocalDateTime, estimatedTime: Int = 60): Order {
+            val order = createOrder(booking = booking)
+            setOrderId(order, "order-2")
+            setOrderStatus(order, OrderStatus.ACCEPTED)
+            order.estimatedTime = estimatedTime
+            return order
+        }
+
+        @Test
+        fun `should throw OVERLAPPING_RANGE when accepting an order that overlaps an accepted one`() {
+            val order = createOrder(booking = slot)
+            val accepted = acceptedOrder(slot.plusMinutes(30))
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123"))
+                .thenReturn(listOf(order, accepted))
+
+            val ex = assertThrows<FatumServiceException> { service.acceptOrReject(accept()) }
+
+            assertAll(
+                { assertEquals(CatalogErrorCode.OVERLAPPING_RANGE, ex.errorCode) },
+                { assertEquals(OrderStatus.PENDING, order.status) }
+            )
+        }
+
+        @Test
+        fun `should not count the order being accepted as an overlap`() {
+            val order = createOrder(booking = slot)
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(listOf(order))
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+
+            service.acceptOrReject(accept())
+
+            assertEquals(OrderStatus.ACCEPTED, order.status)
+        }
+
+        @Test
+        fun `should accept when the overlapping order was cancelled`() {
+            val order = createOrder(booking = slot)
+            val cancelled = createOrder(booking = slot.plusMinutes(30))
+            setOrderId(cancelled, "order-2")
+            setOrderStatus(cancelled, OrderStatus.CANCELLED)
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123"))
+                .thenReturn(listOf(order, cancelled))
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+
+            service.acceptOrReject(accept())
+
+            assertEquals(OrderStatus.ACCEPTED, order.status)
+        }
+
+        @Test
+        fun `should use the estimated time of the accepted order when checking the overlap`() {
+            val order = createOrder(booking = slot)
+            val accepted = acceptedOrder(slot, estimatedTime = 120)
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123"))
+                .thenReturn(listOf(order, accepted))
+
+            val ex = assertThrows<FatumServiceException> { service.acceptOrReject(accept(estimatedTime = 30)) }
+
+            assertEquals(CatalogErrorCode.OVERLAPPING_RANGE, ex.errorCode)
+        }
+
+        @Test
+        fun `should accept when the accepted order ends before the new slot`() {
+            val order = createOrder(booking = slot.plusHours(2).plusMinutes(30))
+            val accepted = acceptedOrder(slot, estimatedTime = 120)
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123"))
+                .thenReturn(listOf(order, accepted))
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+
+            service.acceptOrReject(accept(estimatedTime = 30))
+
+            assertEquals(OrderStatus.ACCEPTED, order.status)
         }
     }
 }
