@@ -5,6 +5,7 @@ import java.time.LocalDateTime
 
 data class OrderDTO(
     val id: String?,
+    val serviceTitle: String,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime,
     val clientId: String,

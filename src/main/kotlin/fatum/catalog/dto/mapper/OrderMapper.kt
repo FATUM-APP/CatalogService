@@ -30,7 +30,7 @@ fun BookService.toEntity(
     )
 }
 
-fun DualConfirmation.toResponse() : DualConfirmationResponse =
+fun DualConfirmation?.toResponse() : DualConfirmationResponse =
     DualConfirmationResponse(
         byCustomer = this?.byCustomer,
         byProvider = this?.byProvider
@@ -39,6 +39,7 @@ fun DualConfirmation.toResponse() : DualConfirmationResponse =
 fun Order.toResponse() : OrderDTO =
     OrderDTO(
         id = this.id,
+        serviceTitle = this.catalogItem.title,
         createdAt = this.createdAt,
         updatedAt = this.updatedAt,
         clientId = this.clientId,
@@ -94,4 +95,3 @@ fun Order.toProvider() =
         reason = this.reason,
         status = this.status.name
     )
-
