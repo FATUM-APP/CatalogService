@@ -6,6 +6,7 @@ enum class OrderStatus {
     REJECTED,
     DELIVERING,
     NOT_DELIVERED,
+    NOT_PAYED,
     COMPLETED,
     CANCELLED,
     DISPUTED,

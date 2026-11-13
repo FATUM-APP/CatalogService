@@ -692,7 +692,7 @@ class OrderServiceTest {
         }
 
         @Test
-        fun `should stay ACCEPTED when both deny`() {
+        fun `should transition to CANCELLED when both deny the start`() {
             val order = createOrder()
             setOrderStatus(order, OrderStatus.ACCEPTED)
             order.startConfirmation.deny(ConfirmingParty.CUSTOMER)
@@ -702,8 +702,41 @@ class OrderServiceTest {
             service.denyStart("order-1", ConfirmingParty.PROVIDER, "No puedo ir")
 
             assertAll(
-                { assertEquals(OrderStatus.ACCEPTED, order.status) },
+                { assertEquals(OrderStatus.CANCELLED, order.status) },
+                { assertEquals("No puedo ir", order.reason) },
                 { assertTrue(order.startConfirmation.isBothDenied) }
+            )
+        }
+
+        @Test
+        fun `should keep the first denial reason when the second one has none`() {
+            val order = createOrder()
+            setOrderStatus(order, OrderStatus.ACCEPTED)
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+
+            service.denyStart("order-1", ConfirmingParty.CUSTOMER, "No estoy listo")
+            service.denyStart("order-1", ConfirmingParty.PROVIDER, null)
+
+            assertAll(
+                { assertEquals(OrderStatus.CANCELLED, order.status) },
+                { assertEquals("No estoy listo", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should generate the reason when both denials of the start have none`() {
+            val order = createOrder()
+            setOrderStatus(order, OrderStatus.ACCEPTED)
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+
+            service.denyStart("order-1", ConfirmingParty.CUSTOMER, null)
+            service.denyStart("order-1", ConfirmingParty.PROVIDER, "   ")
+
+            assertAll(
+                { assertEquals(OrderStatus.CANCELLED, order.status) },
+                { assertEquals("Proveedor no llegó", order.reason) }
             )
         }
 
@@ -996,6 +1029,43 @@ class OrderServiceTest {
             }
 
             assertEquals(CatalogErrorCode.DELIVERING_NOT_CONFIRMED, ex.errorCode)
+        }
+
+        @Test
+        fun `should transition to NOT_PAYED when both deny the payment`() {
+            val order = createOrder()
+            setOrderStatus(order, OrderStatus.DELIVERING)
+            order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
+            order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+
+            service.denyPayment("order-1", ConfirmingParty.CUSTOMER, "No me pagaron")
+            service.denyPayment("order-1", ConfirmingParty.PROVIDER, "El cliente no pago")
+
+            assertAll(
+                { assertEquals(OrderStatus.NOT_PAYED, order.status) },
+                { assertEquals("El cliente no pago", order.reason) },
+                { assertTrue(order.paymentConfirmation.isBothDenied) }
+            )
+        }
+
+        @Test
+        fun `should generate the reason when both denials of the payment have none`() {
+            val order = createOrder()
+            setOrderStatus(order, OrderStatus.DELIVERING)
+            order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
+            order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+
+            service.denyPayment("order-1", ConfirmingParty.CUSTOMER, null)
+            service.denyPayment("order-1", ConfirmingParty.PROVIDER, null)
+
+            assertAll(
+                { assertEquals(OrderStatus.NOT_PAYED, order.status) },
+                { assertEquals("Ambas partes negaron el pago", order.reason) }
+            )
         }
 
         @Test

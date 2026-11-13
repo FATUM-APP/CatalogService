@@ -171,6 +171,10 @@ class Order(
      * del resultado de las DOS respuestas, no de quién respondió: niegue primero o confirme
      * primero, una confirmación y una negación siempre terminan en [OrderStatus.DISPUTED].
      *
+     * Cuando las dos partes niegan no hay disputa, hay un acuerdo: el inicio se cancela
+     * ([OrderStatus.CANCELLED]), la entrega termina en [OrderStatus.NOT_DELIVERED] y el pago en
+     * [OrderStatus.NOT_PAYED].
+     *
      * Es el único punto donde una confirmación puede mover el estado, así que los seis endpoints
      * (confirmar/negar × inicio/entrega/pago) no pueden volver a divergir entre sí.
      *
@@ -189,14 +193,19 @@ class Order(
         if (confirmation.hasResponded(party))
             throw FatumServiceException(CatalogErrorCode.ALREADY_RESPONDED)
 
+        val otherPartyResponded = when (party) {
+            ConfirmingParty.CUSTOMER -> confirmation.byProvider != null
+            ConfirmingParty.PROVIDER -> confirmation.byCustomer != null
+        }
+
         if (confirmed) confirmation.confirm(party) else confirmation.deny(party)
 
         // La negación guarda su motivo aunque todavía no mueva el estado: si la otra parte la
         // contradice después, la disputa hereda ese motivo y no se pierde por el orden de llegada.
-        // Sobrescribe siempre (también con null) para que el motivo de una etapa anterior nunca se
-        // cuele como motivo de la disputa.
+        // Si la negación llega sin motivo conserva el de la otra parte en este mismo paso, pero
+        // descarta el de una transición anterior (p. ej. el de la aceptación).
         val providedReason = reason.clean()
-        if (!confirmed) this.reason = providedReason
+        if (!confirmed) this.reason = providedReason ?: this.reason.takeIf { otherPartyResponded }
 
         val previous = status
         resolveConfirmation(stage, confirmation, providedReason)
@@ -213,9 +222,17 @@ class Order(
             confirmation.isContradicted ->
                 changeStatus(OrderStatus.DISPUTED, disputeReason(stage, confirmation, reason))
 
-            // Las dos partes dicen que no se entregó: es un hecho acordado, no una disputa.
-            confirmation.isBothDenied && stage == ConfirmationStage.COMPLETION ->
-                changeStatus(OrderStatus.NOT_DELIVERED, reason)
+            // Las dos partes dicen que no se pagó: no es una disputa, están de acuerdo.
+            confirmation.isBothDenied && stage == ConfirmationStage.PAYMENT ->
+                changeStatus(OrderStatus.NOT_PAYED, bothDeniedReason(stage, reason))
+
+            // Nadie se presentó: el servicio nunca arrancó, se cancela.
+            confirmation.isBothDenied && stage == ConfirmationStage.START ->
+                changeStatus(OrderStatus.CANCELLED, bothDeniedReason(stage, reason))
+
+            // Las dos partes dicen que la entrega no ocurrió: es un hecho acordado.
+            confirmation.isBothDenied ->
+                changeStatus(OrderStatus.NOT_DELIVERED, bothDeniedReason(stage, reason))
 
             confirmation.isConfirmed && stage == ConfirmationStage.START -> {
                 changeStatus(OrderStatus.DELIVERING)
@@ -236,18 +253,30 @@ class Order(
         confirmation: DualConfirmation,
         reason: String?
     ): String {
-        reason?.let { return it }
-        this.reason?.clean()?.let { return it }
+        (reason ?: this.reason?.clean())?.let { return it }
 
-        val step = when (stage) {
-            ConfirmationStage.START -> "el inicio"
-            ConfirmationStage.COMPLETION -> "la entrega"
-            ConfirmationStage.PAYMENT -> "el pago"
-        }
         return if (confirmation.byCustomer == true)
-            "Disputa automática: el cliente confirmó $step y el proveedor lo negó"
+            "Disputa automática: el cliente confirmó ${step(stage)} y el proveedor lo negó"
         else
-            "Disputa automática: el cliente negó $step y el proveedor lo confirmó"
+            "Disputa automática: el cliente negó ${step(stage)} y el proveedor lo confirmó"
+    }
+
+    /**
+     * El motivo de un cierre acordado. Igual que en la disputa, manda el de la negación; si nadie
+     * escribió nada se genera, porque [OrderStatus.NOT_DELIVERED] y [OrderStatus.NOT_PAYED] no
+     * están en `NO_REASON_REQUIRED` y sin motivo `changeStatus` reventaría justo al cerrar.
+     */
+    private fun bothDeniedReason(stage: ConfirmationStage, reason: String?): String =
+        reason ?: this.reason?.clean() ?: when (stage) {
+            ConfirmationStage.START -> "Proveedor no llegó"
+            ConfirmationStage.COMPLETION -> "Ambas partes negaron la entrega"
+            ConfirmationStage.PAYMENT -> "Ambas partes negaron el pago"
+        }
+
+    private fun step(stage: ConfirmationStage): String = when (stage) {
+        ConfirmationStage.START -> "el inicio"
+        ConfirmationStage.COMPLETION -> "la entrega"
+        ConfirmationStage.PAYMENT -> "el pago"
     }
 
     private fun String?.clean(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
@@ -272,7 +301,10 @@ class Order(
         private val validTransitions = mapOf(
             OrderStatus.PENDING to setOf(OrderStatus.ACCEPTED, OrderStatus.REJECTED, OrderStatus.CANCELLED),
             OrderStatus.ACCEPTED to setOf(OrderStatus.DELIVERING, OrderStatus.CANCELLED, OrderStatus.DISPUTED),
-            OrderStatus.DELIVERING to setOf(OrderStatus.COMPLETED, OrderStatus.NOT_DELIVERED, OrderStatus.CANCELLED, OrderStatus.DISPUTED),
+            OrderStatus.DELIVERING to setOf(
+                OrderStatus.COMPLETED, OrderStatus.NOT_DELIVERED, OrderStatus.NOT_PAYED,
+                OrderStatus.CANCELLED, OrderStatus.DISPUTED
+            ),
             OrderStatus.COMPLETED to setOf(OrderStatus.DISPUTED),
             OrderStatus.DISPUTED to setOf(OrderStatus.SOLVED, OrderStatus.REFUNDED)
         )

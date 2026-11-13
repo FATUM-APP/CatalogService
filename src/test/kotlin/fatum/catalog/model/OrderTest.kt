@@ -278,6 +278,40 @@ class OrderTest {
         }
 
         @Test
+        fun `should throw INVALID_STATUS_TRANSITION for ACCEPTED to NOT_DELIVERED`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.NOT_DELIVERED, "Nadie se presento")
+            }
+            assertEquals(CatalogErrorCode.INVALID_STATUS_TRANSITION, ex.errorCode)
+        }
+
+        @Test
+        fun `should transition from DELIVERING to NOT_PAYED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            order.changeStatus(OrderStatus.NOT_PAYED, "No hubo pago")
+            assertAll(
+                { assertEquals(OrderStatus.NOT_PAYED, order.status) },
+                { assertEquals("No hubo pago", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should throw REASON_REQUIRED for NOT_PAYED without reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.NOT_PAYED)
+            }
+            assertEquals(CatalogErrorCode.REASON_REQUIRED, ex.errorCode)
+        }
+
+        @Test
         fun `should transition from COMPLETED to DISPUTED with reason`() {
             val order = createOrder()
             setStatus(order, OrderStatus.COMPLETED)
@@ -328,7 +362,7 @@ class OrderTest {
         @Test
         fun `should throw INVALID_STATUS_TRANSITION from terminal states`() {
             val terminalStates = listOf(
-                OrderStatus.REJECTED, OrderStatus.NOT_DELIVERED,
+                OrderStatus.REJECTED, OrderStatus.NOT_DELIVERED, OrderStatus.NOT_PAYED,
                 OrderStatus.CANCELLED, OrderStatus.SOLVED, OrderStatus.REFUNDED
             )
 
@@ -481,6 +515,52 @@ class OrderTest {
                 { assertTrue(order.completionConfirmation.isBothDenied) },
                 { assertFalse(order.completionConfirmation.isContradicted) },
                 { assertFalse(order.completionConfirmation.isConfirmed) }
+            )
+        }
+
+        @Test
+        fun `should cancel the order when both deny the start`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No estoy listo")
+            val changed = order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.PROVIDER, confirmed = false)
+
+            assertAll(
+                { assertTrue(changed) },
+                { assertEquals(OrderStatus.CANCELLED, order.status) },
+                { assertEquals("No estoy listo", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should cancel with the default reason when both deny the start silently`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = false)
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.PROVIDER, confirmed = false)
+
+            assertAll(
+                { assertEquals(OrderStatus.CANCELLED, order.status) },
+                { assertEquals("Proveedor no llegó", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should close the payment as NOT_PAYED when both deny it`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+            order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
+            order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
+
+            order.respondConfirmation(ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No me pagaron")
+            val changed = order.respondConfirmation(ConfirmationStage.PAYMENT, ConfirmingParty.PROVIDER, confirmed = false)
+
+            assertAll(
+                { assertTrue(changed) },
+                { assertEquals(OrderStatus.NOT_PAYED, order.status) },
+                { assertEquals("No me pagaron", order.reason) }
             )
         }
 
