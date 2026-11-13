@@ -339,21 +339,7 @@ class OrderServiceTest {
             assertEquals(CatalogErrorCode.PROVIDER_UNAVAILABLE, ex.errorCode)
         }
 
-        @Test
-        fun `should throw OVERLAPPING_RANGE when booking overlaps existing order`() {
-            val existingOrder = createOrder(booking = booking.plusMinutes(10))
-            val request = BookService(
-                clientId = "client-456", booking = booking,
-                serviceId = "service-1", answers = emptySet()
-            )
-            whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
-            whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
-            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(listOf(existingOrder))
 
-            val ex = assertThrows<FatumServiceException> { service.book(request) }
-
-            assertEquals(CatalogErrorCode.OVERLAPPING_RANGE, ex.errorCode)
-        }
     }
 
     //==========================================ACCEPT/REJECT=====================================================

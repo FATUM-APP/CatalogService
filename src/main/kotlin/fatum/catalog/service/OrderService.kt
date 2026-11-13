@@ -308,7 +308,11 @@ class OrderService(
 
     private fun reviewOrderOverlap(providerId: String, booking: LocalDateTime) {
         val providerOrders = orderRepository.findByProviderIdOrderByUpdatedAtDesc(providerId)
-        val overlap = providerOrders.any { timeGapPolicy(it.booking, booking) }
+        val overlap = providerOrders.any {
+            (it.status == OrderStatus.ACCEPTED || it.status == OrderStatus.DELIVERING)
+                    &&
+            timeGapPolicy(it.booking, booking)
+        }
         if (overlap) throw FatumServiceException(CatalogErrorCode.OVERLAPPING_RANGE)
     }
 
