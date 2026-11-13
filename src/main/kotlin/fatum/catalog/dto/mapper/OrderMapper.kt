@@ -32,8 +32,8 @@ fun BookService.toEntity(
 
 fun DualConfirmation.toResponse() : DualConfirmationResponse =
     DualConfirmationResponse(
-        byCustomer = this.byCustomer,
-        byProvider = this.byProvider
+        byCustomer = this?.byCustomer,
+        byProvider = this?.byProvider
     )
 
 fun Order.toResponse() : OrderDTO =
