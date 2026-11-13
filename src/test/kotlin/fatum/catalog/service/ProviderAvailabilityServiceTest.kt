@@ -365,4 +365,62 @@ class ProviderAvailabilityServiceTest {
             verify(providerAvailabilityRepository, never()).delete(any())
         }
     }
+
+    @Nested
+    inner class ProviderAvailableRange {
+
+        private fun availability() = ProviderAvailability(
+            "provider-123", DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(17, 0)
+        )
+
+        @Test
+        fun `should return true when the range fits inside the schedule`() {
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(availability())
+
+            assertTrue(service.providerIsAvailable(
+                "provider-123", DayOfWeek.MONDAY, LocalTime.of(10, 0), LocalTime.of(11, 0)
+            ))
+        }
+
+        @Test
+        fun `should return true when the range ends exactly at the closing time`() {
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(availability())
+
+            assertTrue(service.providerIsAvailable(
+                "provider-123", DayOfWeek.MONDAY, LocalTime.of(16, 0), LocalTime.of(17, 0)
+            ))
+        }
+
+        @Test
+        fun `should return false when the range goes past the closing time`() {
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(availability())
+
+            assertFalse(service.providerIsAvailable(
+                "provider-123", DayOfWeek.MONDAY, LocalTime.of(16, 30), LocalTime.of(17, 30)
+            ))
+        }
+
+        @Test
+        fun `should return false when the range starts before the opening time`() {
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.MONDAY))
+                .thenReturn(availability())
+
+            assertFalse(service.providerIsAvailable(
+                "provider-123", DayOfWeek.MONDAY, LocalTime.of(7, 30), LocalTime.of(8, 30)
+            ))
+        }
+
+        @Test
+        fun `should return false when there is no availability for the day`() {
+            whenever(providerAvailabilityRepository.findByIdProviderIdAndIdDay("provider-123", DayOfWeek.SUNDAY))
+                .thenReturn(null)
+
+            assertFalse(service.providerIsAvailable(
+                "provider-123", DayOfWeek.SUNDAY, LocalTime.of(10, 0), LocalTime.of(11, 0)
+            ))
+        }
+    }
 }

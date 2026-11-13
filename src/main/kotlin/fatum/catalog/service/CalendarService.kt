@@ -62,10 +62,11 @@ class CalendarService(
             BookedSlot(
                 orderId = order.id!!,
                 booking = order.booking,
+                endTime = order.endsAt,
                 estimatedTime = order.estimatedTime,
                 status = order.status
             )
-        }
+    }
 
         return CalendarDay(
             date = date,

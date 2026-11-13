@@ -14,10 +14,3 @@ enum class OrderEventType {
     /** Una de las dos partes confirmó o negó un paso (inicio, entrega, pago). */
     ORDER_CONFIRMATION_CHANGED
 }
-
-/** Cuál de los tres pasos de confirmación doble cambió. */
-enum class ConfirmationType {
-    START,
-    COMPLETION,
-    PAYMENT
-}

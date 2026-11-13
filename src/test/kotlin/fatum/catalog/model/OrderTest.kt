@@ -278,6 +278,40 @@ class OrderTest {
         }
 
         @Test
+        fun `should throw INVALID_STATUS_TRANSITION for ACCEPTED to NOT_DELIVERED`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.NOT_DELIVERED, "Nadie se presento")
+            }
+            assertEquals(CatalogErrorCode.INVALID_STATUS_TRANSITION, ex.errorCode)
+        }
+
+        @Test
+        fun `should transition from DELIVERING to NOT_PAYED with reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            order.changeStatus(OrderStatus.NOT_PAYED, "No hubo pago")
+            assertAll(
+                { assertEquals(OrderStatus.NOT_PAYED, order.status) },
+                { assertEquals("No hubo pago", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should throw REASON_REQUIRED for NOT_PAYED without reason`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.changeStatus(OrderStatus.NOT_PAYED)
+            }
+            assertEquals(CatalogErrorCode.REASON_REQUIRED, ex.errorCode)
+        }
+
+        @Test
         fun `should transition from COMPLETED to DISPUTED with reason`() {
             val order = createOrder()
             setStatus(order, OrderStatus.COMPLETED)
@@ -328,7 +362,7 @@ class OrderTest {
         @Test
         fun `should throw INVALID_STATUS_TRANSITION from terminal states`() {
             val terminalStates = listOf(
-                OrderStatus.REJECTED, OrderStatus.NOT_DELIVERED,
+                OrderStatus.REJECTED, OrderStatus.NOT_DELIVERED, OrderStatus.NOT_PAYED,
                 OrderStatus.CANCELLED, OrderStatus.SOLVED, OrderStatus.REFUNDED
             )
 
@@ -483,6 +517,128 @@ class OrderTest {
                 { assertFalse(order.completionConfirmation.isConfirmed) }
             )
         }
+
+        @Test
+        fun `should cancel the order when both deny the start`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No estoy listo")
+            val changed = order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.PROVIDER, confirmed = false)
+
+            assertAll(
+                { assertTrue(changed) },
+                { assertEquals(OrderStatus.CANCELLED, order.status) },
+                { assertEquals("No estoy listo", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should cancel with the default reason when both deny the start silently`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = false)
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.PROVIDER, confirmed = false)
+
+            assertAll(
+                { assertEquals(OrderStatus.CANCELLED, order.status) },
+                { assertEquals("Proveedor no llegó", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should close the payment as NOT_PAYED when both deny it`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+            order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
+            order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
+
+            order.respondConfirmation(ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No me pagaron")
+            val changed = order.respondConfirmation(ConfirmationStage.PAYMENT, ConfirmingParty.PROVIDER, confirmed = false)
+
+            assertAll(
+                { assertTrue(changed) },
+                { assertEquals(OrderStatus.NOT_PAYED, order.status) },
+                { assertEquals("No me pagaron", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should expose each confirmation by stage`() {
+            val order = createOrder()
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = true)
+
+            assertAll(
+                { assertTrue(order.confirmationOf(ConfirmationStage.START).hasConfirmed(ConfirmingParty.CUSTOMER)) },
+                { assertFalse(order.confirmationOf(ConfirmationStage.COMPLETION).hasResponded(ConfirmingParty.CUSTOMER)) },
+                { assertFalse(order.confirmationOf(ConfirmationStage.PAYMENT).hasResponded(ConfirmingParty.CUSTOMER)) }
+            )
+        }
+
+        @Test
+        fun `should dispute when a confirmation contradicts a previous denial`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+            order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
+            order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
+
+            val changedByDenial = order.respondConfirmation(
+                ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No me pagaron"
+            )
+            val changedByConfirmation = order.respondConfirmation(
+                ConfirmationStage.PAYMENT, ConfirmingParty.PROVIDER, confirmed = true
+            )
+
+            assertAll(
+                { assertFalse(changedByDenial) },
+                { assertTrue(changedByConfirmation) },
+                { assertEquals(OrderStatus.DISPUTED, order.status) },
+                { assertEquals("No me pagaron", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should remember the denial reason while waiting for the other party`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            order.respondConfirmation(
+                ConfirmationStage.COMPLETION, ConfirmingParty.PROVIDER, confirmed = false, reason = "  No termine  "
+            )
+
+            assertAll(
+                { assertEquals(OrderStatus.DELIVERING, order.status) },
+                { assertEquals("No termine", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should throw ALREADY_RESPONDED when a party answers twice`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = false)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = true)
+            }
+
+            assertEquals(CatalogErrorCode.ALREADY_RESPONDED, ex.errorCode)
+        }
+
+        @Test
+        fun `should not reuse the reason of an earlier stage for the dispute`() {
+            val order = createOrder()
+            order.changeStatus(OrderStatus.ACCEPTED, "Acepto con gusto")
+
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = false)
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.PROVIDER, confirmed = true)
+
+            assertAll(
+                { assertEquals(OrderStatus.DISPUTED, order.status) },
+                { assertEquals("Disputa automática: el cliente negó el inicio y el proveedor lo confirmó", order.reason) }
+            )
+        }
     }
 
     @Nested
@@ -505,6 +661,36 @@ class OrderTest {
         fun `should not be equal to non-Order`() {
             val order = createOrder()
             assertNotEquals(order, "not an order")
+        }
+    }
+
+    @Nested
+    inner class EndsAt {
+
+        @Test
+        fun `should add the estimated time to the booking`() {
+            val order = createOrder(booking = LocalDateTime.of(2026, 11, 15, 10, 0))
+            order.estimatedTime = 90
+
+            assertEquals(LocalDateTime.of(2026, 11, 15, 11, 30), order.endsAt)
+        }
+
+        @Test
+        fun `should use the default duration when estimated time is null`() {
+            val order = createOrder(booking = LocalDateTime.of(2026, 11, 15, 10, 0))
+            order.estimatedTime = null
+
+            assertEquals(LocalDateTime.of(2026, 11, 15, 10, 30), order.endsAt)
+        }
+
+        @Test
+        fun `should not move the booking`() {
+            val order = createOrder(booking = LocalDateTime.of(2026, 11, 15, 10, 0))
+            order.estimatedTime = 45
+
+            order.endsAt
+
+            assertEquals(LocalDateTime.of(2026, 11, 15, 10, 0), order.booking)
         }
     }
 }
