@@ -73,9 +73,10 @@ class OrderController(
     @PutMapping("/confirm/start/{orderId}")
     fun confirmStart(
         @PathVariable orderId: String,
-        @RequestParam party: ConfirmingParty
+        @RequestParam party: ConfirmingParty,
+        @RequestBody(required = false) body: UpdateReason? = null
     ): ResponseEntity<Void> {
-        orderService.confirmStart(orderId, party)
+        orderService.confirmStart(orderId, party, body?.reason)
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 
@@ -92,9 +93,10 @@ class OrderController(
     @PutMapping("/confirm/completion/{orderId}")
     fun confirmCompletion(
         @PathVariable orderId: String,
-        @RequestParam party: ConfirmingParty
+        @RequestParam party: ConfirmingParty,
+        @RequestBody(required = false) body: UpdateReason? = null
     ): ResponseEntity<Void> {
-        orderService.confirmCompletion(orderId, party)
+        orderService.confirmCompletion(orderId, party, body?.reason)
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 
@@ -111,9 +113,10 @@ class OrderController(
     @PutMapping("/confirm/payment/{orderId}")
     fun confirmPayment(
         @PathVariable orderId: String,
-        @RequestParam party: ConfirmingParty
+        @RequestParam party: ConfirmingParty,
+        @RequestBody(required = false) body: UpdateReason? = null
     ): ResponseEntity<Void> {
-        orderService.confirmPayment(orderId, party)
+        orderService.confirmPayment(orderId, party, body?.reason)
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 

@@ -483,6 +483,82 @@ class OrderTest {
                 { assertFalse(order.completionConfirmation.isConfirmed) }
             )
         }
+
+        @Test
+        fun `should expose each confirmation by stage`() {
+            val order = createOrder()
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = true)
+
+            assertAll(
+                { assertTrue(order.confirmationOf(ConfirmationStage.START).hasConfirmed(ConfirmingParty.CUSTOMER)) },
+                { assertFalse(order.confirmationOf(ConfirmationStage.COMPLETION).hasResponded(ConfirmingParty.CUSTOMER)) },
+                { assertFalse(order.confirmationOf(ConfirmationStage.PAYMENT).hasResponded(ConfirmingParty.CUSTOMER)) }
+            )
+        }
+
+        @Test
+        fun `should dispute when a confirmation contradicts a previous denial`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+            order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
+            order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
+
+            val changedByDenial = order.respondConfirmation(
+                ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No me pagaron"
+            )
+            val changedByConfirmation = order.respondConfirmation(
+                ConfirmationStage.PAYMENT, ConfirmingParty.PROVIDER, confirmed = true
+            )
+
+            assertAll(
+                { assertFalse(changedByDenial) },
+                { assertTrue(changedByConfirmation) },
+                { assertEquals(OrderStatus.DISPUTED, order.status) },
+                { assertEquals("No me pagaron", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should remember the denial reason while waiting for the other party`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.DELIVERING)
+
+            order.respondConfirmation(
+                ConfirmationStage.COMPLETION, ConfirmingParty.PROVIDER, confirmed = false, reason = "  No termine  "
+            )
+
+            assertAll(
+                { assertEquals(OrderStatus.DELIVERING, order.status) },
+                { assertEquals("No termine", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should throw ALREADY_RESPONDED when a party answers twice`() {
+            val order = createOrder()
+            setStatus(order, OrderStatus.ACCEPTED)
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = false)
+
+            val ex = assertThrows<FatumServiceException> {
+                order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = true)
+            }
+
+            assertEquals(CatalogErrorCode.ALREADY_RESPONDED, ex.errorCode)
+        }
+
+        @Test
+        fun `should not reuse the reason of an earlier stage for the dispute`() {
+            val order = createOrder()
+            order.changeStatus(OrderStatus.ACCEPTED, "Acepto con gusto")
+
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = false)
+            order.respondConfirmation(ConfirmationStage.START, ConfirmingParty.PROVIDER, confirmed = true)
+
+            assertAll(
+                { assertEquals(OrderStatus.DISPUTED, order.status) },
+                { assertEquals("Disputa automática: el cliente negó el inicio y el proveedor lo confirmó", order.reason) }
+            )
+        }
     }
 
     @Nested

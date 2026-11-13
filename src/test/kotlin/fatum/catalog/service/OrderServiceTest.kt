@@ -11,6 +11,7 @@ import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Category
 import fatum.catalog.model.Order
+import fatum.catalog.model.constant.ConfirmationStage
 import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.JobType
 import fatum.catalog.model.constant.OrderStatus
@@ -1008,6 +1009,184 @@ class OrderServiceTest {
             }
 
             assertEquals(CatalogErrorCode.COMPLETION_NOT_CONFIRMED, ex.errorCode)
+        }
+    }
+
+    //==========================================DISPUTAS==========================================================
+
+    /**
+     * El bug: una negación no movía el estado y la confirmación contraria solo miraba "¿ya
+     * confirmaron los dos?". Resultado: negar primero y confirmar después dejaba la orden viva.
+     * Estos tests recorren los tres pasos en los dos órdenes de respuesta posibles.
+     */
+    @Nested
+    inner class Dispute {
+
+        private fun acceptedOrder(): Order {
+            val order = createOrder()
+            setOrderStatus(order, OrderStatus.ACCEPTED)
+            return stubbed(order)
+        }
+
+        private fun deliveringOrder(completionConfirmed: Boolean = false): Order {
+            val order = createOrder()
+            setOrderStatus(order, OrderStatus.DELIVERING)
+            if (completionConfirmed) {
+                order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
+                order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
+            }
+            return stubbed(order)
+        }
+
+        private fun stubbed(order: Order): Order {
+            whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
+            return order
+        }
+
+        private fun respond(
+            stage: ConfirmationStage,
+            party: ConfirmingParty,
+            confirmed: Boolean,
+            reason: String? = null
+        ) {
+            when (stage) {
+                ConfirmationStage.START ->
+                    if (confirmed) service.confirmStart("order-1", party, reason)
+                    else service.denyStart("order-1", party, reason)
+
+                ConfirmationStage.COMPLETION ->
+                    if (confirmed) service.confirmCompletion("order-1", party, reason)
+                    else service.denyCompletion("order-1", party, reason)
+
+                ConfirmationStage.PAYMENT ->
+                    if (confirmed) service.confirmPayment("order-1", party, reason)
+                    else service.denyPayment("order-1", party, reason)
+            }
+        }
+
+        @Test
+        fun `should dispute the payment when the denial arrives first`() {
+            val order = deliveringOrder(completionConfirmed = true)
+
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No me pagaron")
+            assertEquals(OrderStatus.DELIVERING, order.status)
+
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.PROVIDER, confirmed = true)
+
+            assertAll(
+                { assertEquals(OrderStatus.DISPUTED, order.status) },
+                { assertEquals("No me pagaron", order.reason) },
+                { assertTrue(order.paymentConfirmation.isContradicted) }
+            )
+        }
+
+        @Test
+        fun `should dispute the start when the denial arrives first`() {
+            val order = acceptedOrder()
+
+            respond(ConfirmationStage.START, ConfirmingParty.PROVIDER, confirmed = false, reason = "El cliente no estaba")
+            respond(ConfirmationStage.START, ConfirmingParty.CUSTOMER, confirmed = true)
+
+            assertAll(
+                { assertEquals(OrderStatus.DISPUTED, order.status) },
+                { assertEquals("El cliente no estaba", order.reason) },
+                { assertNull(order.deliveryStartedAt) }
+            )
+        }
+
+        @Test
+        fun `should dispute the completion when the denial arrives first`() {
+            val order = deliveringOrder()
+
+            respond(ConfirmationStage.COMPLETION, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No se hizo el trabajo")
+            respond(ConfirmationStage.COMPLETION, ConfirmingParty.PROVIDER, confirmed = true)
+
+            assertAll(
+                { assertEquals(OrderStatus.DISPUTED, order.status) },
+                { assertEquals("No se hizo el trabajo", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should reach DISPUTED in both response orders for every stage`() {
+            val stages: Map<ConfirmationStage, () -> Order> = mapOf(
+                ConfirmationStage.START to ::acceptedOrder,
+                ConfirmationStage.COMPLETION to { deliveringOrder() },
+                ConfirmationStage.PAYMENT to { deliveringOrder(completionConfirmed = true) }
+            )
+
+            stages.forEach { (stage, newOrder) ->
+                listOf(
+                    ConfirmingParty.CUSTOMER to ConfirmingParty.PROVIDER,
+                    ConfirmingParty.PROVIDER to ConfirmingParty.CUSTOMER
+                ).forEach { (denier, confirmer) ->
+                    val deniedFirst = newOrder()
+                    respond(stage, denier, confirmed = false, reason = "No se cumplió")
+                    respond(stage, confirmer, confirmed = true)
+
+                    val confirmedFirst = newOrder()
+                    respond(stage, confirmer, confirmed = true)
+                    respond(stage, denier, confirmed = false, reason = "No se cumplió")
+
+                    assertAll(
+                        { assertEquals(OrderStatus.DISPUTED, deniedFirst.status, "$stage: $denier negó y luego $confirmer confirmó") },
+                        { assertEquals("No se cumplió", deniedFirst.reason, "$stage: $denier negó y luego $confirmer confirmó") },
+                        { assertEquals(OrderStatus.DISPUTED, confirmedFirst.status, "$stage: $confirmer confirmó y luego $denier negó") },
+                        { assertEquals("No se cumplió", confirmedFirst.reason, "$stage: $confirmer confirmó y luego $denier negó") }
+                    )
+                }
+            }
+        }
+
+        @Test
+        fun `should describe the contradiction when the denial had no reason`() {
+            val order = deliveringOrder(completionConfirmed = true)
+
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = false)
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.PROVIDER, confirmed = true)
+
+            assertAll(
+                { assertEquals(OrderStatus.DISPUTED, order.status) },
+                { assertEquals("Disputa automática: el cliente negó el pago y el proveedor lo confirmó", order.reason) }
+            )
+        }
+
+        @Test
+        fun `should let the confirming party explain the dispute it closes`() {
+            val order = deliveringOrder(completionConfirmed = true)
+
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = false)
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.PROVIDER, confirmed = true, reason = "Me pagó en efectivo")
+
+            assertEquals("Me pagó en efectivo", order.reason)
+        }
+
+        @Test
+        fun `should publish status changed when a confirmation closes the dispute`() {
+            deliveringOrder(completionConfirmed = true)
+
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = false, reason = "No me pagaron")
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.PROVIDER, confirmed = true)
+
+            verify(orderEventPublisher).statusChanged(
+                orderId = "order-1",
+                clientId = "client-456",
+                providerId = "provider-123",
+                newStatus = OrderStatus.DISPUTED,
+                reason = "No me pagaron"
+            )
+        }
+
+        @Test
+        fun `should not publish status changed when only one party confirms`() {
+            deliveringOrder(completionConfirmed = true)
+
+            respond(ConfirmationStage.PAYMENT, ConfirmingParty.CUSTOMER, confirmed = true)
+
+            verify(orderEventPublisher, never()).statusChanged(
+                orderId = any(), clientId = any(), providerId = any(), newStatus = any(), reason = any()
+            )
         }
     }
 

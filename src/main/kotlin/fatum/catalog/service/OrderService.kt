@@ -6,15 +6,14 @@ import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
 
 import fatum.catalog.exception.CatalogErrorCode
-import fatum.catalog.event.order.ConfirmationType
 import fatum.catalog.event.order.OrderEventPublisher
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Order
+import fatum.catalog.model.constant.ConfirmationStage
 import fatum.catalog.model.constant.ConfirmingParty
 import fatum.catalog.model.constant.OrderStatus
 import fatum.catalog.model.constant.ServiceStatus
-import fatum.catalog.model.vo.DualConfirmation
 import fatum.catalog.model.vo.QuestionAnswer
 import fatum.catalog.repository.OrderRepository
 import org.springframework.context.ApplicationEventPublisher
@@ -92,7 +91,7 @@ class OrderService(
     //==========================================CANCEL============================================================
 
     @Transactional
-    fun cancel(orderId : String,reason: String) {
+    fun cancel(orderId : String, reason: String?) {
         val order = getOrder(orderId)
         order.changeStatus(OrderStatus.CANCELLED, reason)
         order.update()
@@ -109,7 +108,7 @@ class OrderService(
     }
 
     @Transactional
-    fun cancelProviderOrders(providerId : String,reason: String) {
+    fun cancelProviderOrders(providerId : String, reason: String?) {
         val pendingOrders = orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, OrderStatus.PENDING)
         pendingOrders.forEach {
             it.changeStatus(OrderStatus.REJECTED, reason)
@@ -140,161 +139,83 @@ class OrderService(
     //==========================================CONFIRMATIONS=====================================================
 
     @Transactional
-    fun confirmStart(orderId: String, party: ConfirmingParty) {
+    fun confirmStart(orderId: String, party: ConfirmingParty, reason: String? = null) {
         val order = getOrder(orderId)
-        if (order.status != OrderStatus.ACCEPTED)
-            throw FatumServiceException(CatalogErrorCode.ORDER_NOT_CONFIRMED)
-        validateNotResponded(order.startConfirmation, party)
-
-        order.startConfirmation.confirm(party)
-        val statusChanged = order.startConfirmation.isConfirmed
-
-        if (statusChanged) {
-            order.changeStatus(OrderStatus.DELIVERING)
-            order.deliveryStartedAt = LocalDateTime.now()
-        }
-        order.update()
-        orderRepository.save(order)
-
-
-        orderEventPublisher.confirmationChanged(
-            orderId = order.id!!,
-            clientId = order.clientId,
-            providerId = order.providerId,
-            confirmation = ConfirmationType.START.name,
-            party = party.name,
-            confirmed = true,
-            bothConfirmed = order.startConfirmation.isConfirmed
-        )
+        ensureStartStage(order)
+        respond(order, ConfirmationStage.START, party, confirmed = true, reason = reason)
     }
 
     @Transactional
-    fun denyStart(orderId: String, party: ConfirmingParty, reason: String) {
+    fun denyStart(orderId: String, party: ConfirmingParty, reason: String?) {
         val order = getOrder(orderId)
-        if (order.status != OrderStatus.ACCEPTED)
-            throw FatumServiceException(CatalogErrorCode.ORDER_NOT_CONFIRMED)
-        validateNotResponded(order.startConfirmation, party)
-
-        order.startConfirmation.deny(party)
-
-        val statusChanged = order.startConfirmation.isContradicted
-
-        if (statusChanged)
-            order.changeStatus(OrderStatus.DISPUTED, reason)
-        order.update()
-        orderRepository.save(order)
-
-
-        orderEventPublisher.confirmationChanged(
-            orderId = order.id!!,
-            clientId = order.clientId,
-            providerId = order.providerId,
-            confirmation = ConfirmationType.START.name,
-            party = party.name,
-            confirmed = false,
-            bothConfirmed = false
-        )
+        ensureStartStage(order)
+        respond(order, ConfirmationStage.START, party, confirmed = false, reason = reason)
     }
 
     @Transactional
-    fun confirmCompletion(orderId: String, party: ConfirmingParty) {
+    fun confirmCompletion(orderId: String, party: ConfirmingParty, reason: String? = null) {
         val order = getOrder(orderId)
-        if (order.status != OrderStatus.DELIVERING)
-            throw FatumServiceException(CatalogErrorCode.DELIVERING_NOT_CONFIRMED)
-        validateNotResponded(order.completionConfirmation, party)
-
-        order.completionConfirmation.confirm(party)
-        order.update()
-        orderRepository.save(order)
-        orderEventPublisher.confirmationChanged(
-            orderId = order.id!!,
-            clientId = order.clientId,
-            providerId = order.providerId,
-            confirmation = ConfirmationType.COMPLETION.name,
-            party = party.name,
-            confirmed = true,
-            bothConfirmed = order.completionConfirmation.isConfirmed
-        )
+        ensureCompletionStage(order)
+        respond(order, ConfirmationStage.COMPLETION, party, confirmed = true, reason = reason)
     }
 
     @Transactional
-    fun denyCompletion(orderId: String, party: ConfirmingParty, reason: String) {
+    fun denyCompletion(orderId: String, party: ConfirmingParty, reason: String?) {
         val order = getOrder(orderId)
-        if (order.status != OrderStatus.DELIVERING)
-            throw FatumServiceException(CatalogErrorCode.DELIVERING_NOT_CONFIRMED)
-
-        validateNotResponded(order.completionConfirmation, party)
-        order.completionConfirmation.deny(party)
-
-        if (order.completionConfirmation.isContradicted)
-            order.changeStatus(OrderStatus.DISPUTED, reason)
-        else if (order.completionConfirmation.isBothDenied)
-            order.changeStatus(OrderStatus.NOT_DELIVERED, reason)
-        order.update()
-        orderRepository.save(order)
-        orderEventPublisher.confirmationChanged(
-            orderId = order.id!!,
-            clientId = order.clientId,
-            providerId = order.providerId,
-            confirmation = ConfirmationType.COMPLETION.name,
-            party = party.name,
-            confirmed = false,
-            bothConfirmed = false
-        )
+        ensureCompletionStage(order)
+        respond(order, ConfirmationStage.COMPLETION, party, confirmed = false, reason = reason)
     }
 
     @Transactional
-    fun confirmPayment(orderId: String, party: ConfirmingParty) {
+    fun confirmPayment(orderId: String, party: ConfirmingParty, reason: String? = null) {
         val order = getOrder(orderId)
-        if (order.status != OrderStatus.DELIVERING)
-            throw FatumServiceException(CatalogErrorCode.DELIVERING_NOT_CONFIRMED)
-        if (!order.completionConfirmation.isConfirmed)
-            throw FatumServiceException(CatalogErrorCode.COMPLETION_NOT_CONFIRMED)
-        validateNotResponded(order.paymentConfirmation, party)
-
-        order.paymentConfirmation.confirm(party)
-
-        if (order.paymentConfirmation.isConfirmed)
-            order.changeStatus(OrderStatus.COMPLETED)
-
-        order.update()
-        orderRepository.save(order)
-        orderEventPublisher.confirmationChanged(
-            orderId = order.id!!,
-            clientId = order.clientId,
-            providerId = order.providerId,
-            confirmation = ConfirmationType.PAYMENT.name,
-            party = party.name,
-            confirmed = true,
-            bothConfirmed = order.paymentConfirmation.isConfirmed
-        )
+        ensurePaymentStage(order)
+        respond(order, ConfirmationStage.PAYMENT, party, confirmed = true, reason = reason)
     }
 
     @Transactional
-    fun denyPayment(orderId: String, party: ConfirmingParty, reason: String) {
+    fun denyPayment(orderId: String, party: ConfirmingParty, reason: String?) {
         val order = getOrder(orderId)
-        if (order.status != OrderStatus.DELIVERING)
-            throw FatumServiceException(CatalogErrorCode.DELIVERING_NOT_CONFIRMED)
-        if (!order.completionConfirmation.isConfirmed)
-            throw FatumServiceException(CatalogErrorCode.COMPLETION_NOT_CONFIRMED)
-        validateNotResponded(order.paymentConfirmation, party)
+        ensurePaymentStage(order)
+        respond(order, ConfirmationStage.PAYMENT, party, confirmed = false, reason = reason)
+    }
 
-        order.paymentConfirmation.deny(party)
-
-        if (order.paymentConfirmation.isContradicted)
-            order.changeStatus(OrderStatus.DISPUTED, reason)
-
+    /**
+     * Único camino de una respuesta a un paso de confirmación. El estado lo decide el modelo a
+     * partir de las dos respuestas; aquí solo quedan los eventos: siempre el de la confirmación y,
+     * si de verdad cambió el estado, también `statusChanged` (también cuando la disputa nace de un
+     * "confirmo" que contradice una negación previa).
+     */
+    private fun respond(
+        order: Order,
+        stage: ConfirmationStage,
+        party: ConfirmingParty,
+        confirmed: Boolean,
+        reason: String?
+    ) {
+        val previousStatus = order.status
+        order.respondConfirmation(stage, party, confirmed, reason)
         order.update()
         orderRepository.save(order)
+
         orderEventPublisher.confirmationChanged(
             orderId = order.id!!,
             clientId = order.clientId,
             providerId = order.providerId,
-            confirmation = ConfirmationType.PAYMENT.name,
+            confirmation = stage.name,
             party = party.name,
-            confirmed = false,
-            bothConfirmed = false
+            confirmed = confirmed,
+            bothConfirmed = order.confirmationOf(stage).isConfirmed
         )
+
+        if (order.status != previousStatus)
+            orderEventPublisher.statusChanged(
+                orderId = order.id!!,
+                clientId = order.clientId,
+                providerId = order.providerId,
+                newStatus = order.status,
+                reason = order.reason
+            )
     }
 
     //==========================================READ ONLY=========================================================
@@ -351,9 +272,21 @@ class OrderService(
             throw FatumServiceException(CatalogErrorCode.INVALID_USER)
     }
 
-    private fun validateNotResponded(confirmation: DualConfirmation, party: ConfirmingParty) {
-        if (confirmation.hasResponded(party))
-            throw FatumServiceException(CatalogErrorCode.ALREADY_RESPONDED)
+    /** Precondiciones del paso: el estado tiene que permitir esa confirmación. */
+    private fun ensureStartStage(order: Order) {
+        if (order.status != OrderStatus.ACCEPTED)
+            throw FatumServiceException(CatalogErrorCode.ORDER_NOT_CONFIRMED)
+    }
+
+    private fun ensureCompletionStage(order: Order) {
+        if (order.status != OrderStatus.DELIVERING)
+            throw FatumServiceException(CatalogErrorCode.DELIVERING_NOT_CONFIRMED)
+    }
+
+    private fun ensurePaymentStage(order: Order) {
+        ensureCompletionStage(order)
+        if (!order.completionConfirmation.isConfirmed)
+            throw FatumServiceException(CatalogErrorCode.COMPLETION_NOT_CONFIRMED)
     }
 
     private fun validateAnswers(item: CatalogItem, answers: Set<QuestionAnswer>) {
