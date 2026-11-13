@@ -101,21 +101,30 @@ class Order(
         AttributeOverride(name = "byCustomer", column = Column(name = "START_CONFIRMED_BY_CUSTOMER")),
         AttributeOverride(name = "byProvider", column = Column(name = "START_CONFIRMED_BY_PROVIDER"))
     )
-    val startConfirmation: DualConfirmation = DualConfirmation()
+    private var startConfirmationValue: DualConfirmation? = DualConfirmation()
+
+    val startConfirmation: DualConfirmation
+        get() = startConfirmationValue ?: DualConfirmation().also { startConfirmationValue = it }
 
     @Embedded
     @AttributeOverrides(
         AttributeOverride(name = "byCustomer", column = Column(name = "COMPLETION_CONFIRMED_BY_CUSTOMER")),
         AttributeOverride(name = "byProvider", column = Column(name = "COMPLETION_CONFIRMED_BY_PROVIDER"))
     )
-    val completionConfirmation: DualConfirmation = DualConfirmation()
+    private var completionConfirmationValue: DualConfirmation? = DualConfirmation()
+
+    val completionConfirmation: DualConfirmation
+        get() = completionConfirmationValue ?: DualConfirmation().also { completionConfirmationValue = it }
 
     @Embedded
     @AttributeOverrides(
         AttributeOverride(name = "byCustomer", column = Column(name = "PAYMENT_CONFIRMED_BY_CUSTOMER")),
         AttributeOverride(name = "byProvider", column = Column(name = "PAYMENT_CONFIRMED_BY_PROVIDER"))
     )
-    val paymentConfirmation: DualConfirmation = DualConfirmation()
+    private var paymentConfirmationValue: DualConfirmation? = DualConfirmation()
+
+    val paymentConfirmation: DualConfirmation
+        get() = paymentConfirmationValue ?: DualConfirmation().also { paymentConfirmationValue = it }
 
     @Column(name = "REASON", length = 500)
     var reason: String? = null
@@ -127,7 +136,7 @@ class Order(
 
     @Column(name = "UPDATED_AT", nullable = false)
     var updatedAt: LocalDateTime = LocalDateTime.now()
-    protected set
+        protected set
 
     init {
         this.negotiatedPrice = negotiatedPrice

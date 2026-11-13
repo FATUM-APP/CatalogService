@@ -191,8 +191,8 @@ class OrderService(
             providerId = order.providerId,
             confirmation = ConfirmationType.START.name,
             party = party.name,
-            confirmed = true,
-            bothConfirmed = order.startConfirmation.isConfirmed
+            confirmed = false,
+            bothConfirmed = false
         )
     }
 
@@ -210,10 +210,10 @@ class OrderService(
             orderId = order.id!!,
             clientId = order.clientId,
             providerId = order.providerId,
-            confirmation = ConfirmationType.START.name,
+            confirmation = ConfirmationType.COMPLETION.name,
             party = party.name,
             confirmed = true,
-            bothConfirmed = order.startConfirmation.isConfirmed
+            bothConfirmed = order.completionConfirmation.isConfirmed
         )
     }
 
@@ -236,10 +236,10 @@ class OrderService(
             orderId = order.id!!,
             clientId = order.clientId,
             providerId = order.providerId,
-            confirmation = ConfirmationType.START.name,
+            confirmation = ConfirmationType.COMPLETION.name,
             party = party.name,
-            confirmed = true,
-            bothConfirmed = order.startConfirmation.isConfirmed
+            confirmed = false,
+            bothConfirmed = false
         )
     }
 
@@ -263,10 +263,10 @@ class OrderService(
             orderId = order.id!!,
             clientId = order.clientId,
             providerId = order.providerId,
-            confirmation = ConfirmationType.START.name,
+            confirmation = ConfirmationType.PAYMENT.name,
             party = party.name,
             confirmed = true,
-            bothConfirmed = order.startConfirmation.isConfirmed
+            bothConfirmed = order.paymentConfirmation.isConfirmed
         )
     }
 
@@ -290,10 +290,10 @@ class OrderService(
             orderId = order.id!!,
             clientId = order.clientId,
             providerId = order.providerId,
-            confirmation = ConfirmationType.START.name,
+            confirmation = ConfirmationType.PAYMENT.name,
             party = party.name,
-            confirmed = true,
-            bothConfirmed = order.startConfirmation.isConfirmed
+            confirmed = false,
+            bothConfirmed = false
         )
     }
 
