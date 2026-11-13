@@ -1,5 +1,6 @@
 package fatum.catalog.realtime
 
+import fatum.catalog.realtime.sse.PlatformUserResolver
 import fatum.catalog.realtime.sse.RealtimeController
 import fatum.catalog.realtime.sse.SseHub
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
@@ -15,19 +17,24 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 class RealtimeControllerTest {
 
     private val hub: SseHub = mock()
-    private val controller = RealtimeController(hub)
+    private val users: PlatformUserResolver = mock()
+    private val controller = RealtimeController(hub, users)
 
     private fun token(sub: String) = JwtAuthenticationToken(
         Jwt.withTokenValue("token").header("alg", "none").claim("sub", sub).build()
     )
 
     @Test
-    fun `the order stream belongs to whoever owns the token`() {
+    fun `the order stream uses the platform user id, not the token subject`() {
         val emitter = SseEmitter()
-        whenever(hub.subscribe(SseHub.userTopic("user-1"))).thenReturn(emitter)
+        val authentication: Authentication = token("cognito-sub-1")
+        whenever(users.resolve(authentication)).thenReturn("user-uuid-1")
+        whenever(hub.subscribe(SseHub.userTopic("user-uuid-1"))).thenReturn(emitter)
 
-        assertEquals(emitter, controller.orders(token("user-1")))
-        verify(hub).subscribe(SseHub.userTopic("user-1"))
+        assertEquals(emitter, controller.orders(authentication))
+
+        verify(users).resolve(authentication)
+        verify(hub).subscribe(SseHub.userTopic("user-uuid-1"))
     }
 
     @Test
@@ -36,6 +43,7 @@ class RealtimeControllerTest {
         whenever(hub.subscribe(SseHub.calendarTopic("provider-1"))).thenReturn(emitter)
 
         assertEquals(emitter, controller.calendar("provider-1"))
+
         verify(hub).subscribe(SseHub.calendarTopic("provider-1"))
     }
 
