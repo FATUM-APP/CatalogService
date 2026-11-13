@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @ControllerAdvice
@@ -60,5 +61,10 @@ class GlobalExceptionHandler {
             "message" to ex.message
         )
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body)
+    }
+
+    @ExceptionHandler(AsyncRequestNotUsableException::class)
+    fun handleAsyncNotUsable(ex: AsyncRequestNotUsableException) {
+        log.debug("SSE connection already closed: {}", ex.message)
     }
 }
