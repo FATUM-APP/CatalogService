@@ -7,6 +7,8 @@ import fatum.catalog.dto.request.schedule.FullAvailability
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.ProviderAvailability
+import fatum.catalog.realtime.CalendarChange
+import fatum.catalog.realtime.CalendarRealtimePublisher
 import fatum.catalog.repository.ProviderAvailabilityRepository
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.stereotype.Service
@@ -16,7 +18,8 @@ import java.time.LocalTime
 @Service
 class ProviderAvailabilityService(
     private val providerAvailabilityRepository: ProviderAvailabilityRepository,
-    private val userServiceClient: UserServiceClient
+    private val userServiceClient: UserServiceClient,
+    private val calendar: CalendarRealtimePublisher
 ) {
     @Transactional
     fun initialize(providerId: String){
@@ -33,6 +36,7 @@ class ProviderAvailabilityService(
         days.forEach {
             providerAvailabilityRepository.save(ProviderAvailability(providerId, it))
         }
+        calendar.changed(providerId, CalendarChange.WEEKLY_SCHEDULE_CHANGED)
     }
 
     @Transactional
@@ -46,6 +50,7 @@ class ProviderAvailabilityService(
         } ?: request.toEntity()
 
         providerAvailabilityRepository.save(availability)
+        calendar.changed(request.providerId, CalendarChange.WEEKLY_SCHEDULE_CHANGED)
     }
 
     @Transactional
@@ -55,6 +60,7 @@ class ProviderAvailabilityService(
             changeAvailabilityToAllDay()
         } ?: request.toEntity()
         providerAvailabilityRepository.save(availability)
+        calendar.changed(request.providerId, CalendarChange.WEEKLY_SCHEDULE_CHANGED)
     }
 
     @Transactional(readOnly = true)
@@ -79,6 +85,7 @@ class ProviderAvailabilityService(
             getAvailability(providerId, day)
                 ?: throw FatumServiceException(CatalogErrorCode.AVAILABILITY_NOT_FOUND)
         )
+        calendar.changed(providerId, CalendarChange.WEEKLY_SCHEDULE_CHANGED)
     }
 
     //==========================================HELPERS==============================================

@@ -5,6 +5,7 @@ import fatum.catalog.client.M2User
 import fatum.catalog.client.UserServiceClient
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.request.order.OrderResponse
+import fatum.catalog.event.order.OrderEventPublisher
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -47,7 +48,16 @@ class OrderServiceTest {
     @Mock lateinit var providerAvailabilityService: ProviderAvailabilityService
     @Mock lateinit var providerUnavailableRangeService: ProviderUnavailableRangeService
     @Mock lateinit var catalogItemService: CatalogItemService
+    @Mock lateinit var orderEventPublisher: OrderEventPublisher
     @InjectMocks lateinit var service: OrderService
+
+    /** Simula lo que hace JPA al guardar: le asigna el id a la entidad. */
+    private fun persisted(order: Order): Order {
+        val field = Order::class.java.getDeclaredField("id")
+        field.isAccessible = true
+        field.set(order, "order-1")
+        return order
+    }
 
     private lateinit var category: Category
     private lateinit var catalogItem: CatalogItem
@@ -136,7 +146,7 @@ class OrderServiceTest {
         private val booking = LocalDateTime.of(2027, 6, 15, 10, 0)
 
         private fun stubProviderFree() {
-            whenever(orderRepository.findByProviderId("provider-123")).thenReturn(emptyList())
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(emptyList())
             whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking))
                 .thenReturn(false)
             whenever(providerAvailabilityService.providerIsAvailable(
@@ -155,7 +165,7 @@ class OrderServiceTest {
             whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
             whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
             stubProviderFree()
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.book(request)
 
@@ -185,7 +195,7 @@ class OrderServiceTest {
             whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
             whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
             stubProviderFree()
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.book(request)
 
@@ -219,13 +229,13 @@ class OrderServiceTest {
             )
             whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
             whenever(catalogItemService.findById("service-2", ServiceStatus.ACTIVE)).thenReturn(itemWithQuestions)
-            whenever(orderRepository.findByProviderId("provider-123")).thenReturn(emptyList())
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(emptyList())
             whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking))
                 .thenReturn(false)
             whenever(providerAvailabilityService.providerIsAvailable(
                 "provider-123", booking.dayOfWeek, booking.toLocalTime()
             )).thenReturn(true)
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.book(request)
 
@@ -284,7 +294,7 @@ class OrderServiceTest {
             whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
             whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
             stubProviderFree()
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.book(request)
 
@@ -299,7 +309,7 @@ class OrderServiceTest {
             )
             whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
             whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
-            whenever(orderRepository.findByProviderId("provider-123")).thenReturn(emptyList())
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(emptyList())
             whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking))
                 .thenReturn(true)
 
@@ -316,7 +326,7 @@ class OrderServiceTest {
             )
             whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
             whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
-            whenever(orderRepository.findByProviderId("provider-123")).thenReturn(emptyList())
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(emptyList())
             whenever(providerUnavailableRangeService.scheduledDateInRange("provider-123", booking))
                 .thenReturn(false)
             whenever(providerAvailabilityService.providerIsAvailable(
@@ -337,7 +347,7 @@ class OrderServiceTest {
             )
             whenever(userServiceClient.getUserById("client-456")).thenReturn(validUser)
             whenever(catalogItemService.findById("service-1", ServiceStatus.ACTIVE)).thenReturn(catalogItem)
-            whenever(orderRepository.findByProviderId("provider-123")).thenReturn(listOf(existingOrder))
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(listOf(existingOrder))
 
             val ex = assertThrows<FatumServiceException> { service.book(request) }
 
@@ -354,11 +364,11 @@ class OrderServiceTest {
         fun `should accept order with estimated time`() {
             val order = createOrder()
             val response = OrderResponse(
-                _orderId = "order-1", _providerId = "provider-123",
+                orderId = "order-1", providerId = "provider-123",
                 status = OrderStatus.ACCEPTED, estimatedTime = 45
             )
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.acceptOrReject(response)
 
@@ -373,11 +383,11 @@ class OrderServiceTest {
         fun `should reject order`() {
             val order = createOrder()
             val response = OrderResponse(
-                _orderId = "order-1", _providerId = "provider-123",
+                orderId = "order-1", providerId = "provider-123",
                 status = OrderStatus.REJECTED
             )
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.acceptOrReject(response)
 
@@ -388,11 +398,11 @@ class OrderServiceTest {
         fun `should reject order with reason`() {
             val order = createOrder()
             val response = OrderResponse(
-                _orderId = "order-1", _providerId = "provider-123",
-                status = OrderStatus.REJECTED, _reason = "No tengo disponibilidad"
+                orderId = "order-1", providerId = "provider-123",
+                status = OrderStatus.REJECTED, reason = "No tengo disponibilidad"
             )
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.acceptOrReject(response)
 
@@ -405,7 +415,7 @@ class OrderServiceTest {
         @Test
         fun `should throw INVALID_RESPONSE for status other than ACCEPTED or REJECTED`() {
             val response = OrderResponse(
-                _orderId = "order-1", _providerId = "provider-123",
+                orderId = "order-1", providerId = "provider-123",
                 status = OrderStatus.DELIVERING
             )
 
@@ -417,7 +427,7 @@ class OrderServiceTest {
         @Test
         fun `should throw INVALID_RESPONSE when accepting without estimated time`() {
             val response = OrderResponse(
-                _orderId = "order-1", _providerId = "provider-123",
+                orderId = "order-1", providerId = "provider-123",
                 status = OrderStatus.ACCEPTED
             )
 
@@ -432,7 +442,7 @@ class OrderServiceTest {
             setOrderStatus(order, OrderStatus.ACCEPTED)
 
             val response = OrderResponse(
-                _orderId = "order-1", _providerId = "provider-123",
+                orderId = "order-1", providerId = "provider-123",
                 status = OrderStatus.ACCEPTED, estimatedTime = 30
             )
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
@@ -446,7 +456,7 @@ class OrderServiceTest {
         fun `should throw FORBIDDEN when provider does not match`() {
             val order = createOrder()
             val response = OrderResponse(
-                _orderId = "order-1", _providerId = "wrong-provider",
+                orderId = "order-1", providerId = "wrong-provider",
                 status = OrderStatus.ACCEPTED, estimatedTime = 30
             )
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
@@ -459,7 +469,7 @@ class OrderServiceTest {
         @Test
         fun `should throw ORDER_NOT_FOUND when order does not exist`() {
             val response = OrderResponse(
-                _orderId = "order-999", _providerId = "provider-123",
+                orderId = "order-999", providerId = "provider-123",
                 status = OrderStatus.ACCEPTED, estimatedTime = 30
             )
             whenever(orderRepository.findById("order-999")).thenReturn(Optional.empty())
@@ -479,7 +489,7 @@ class OrderServiceTest {
         fun `should cancel PENDING order`() {
             val order = createOrder()
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.cancel("order-1", "Ya no necesito el servicio")
 
@@ -495,7 +505,7 @@ class OrderServiceTest {
             val order = createOrder()
             setOrderStatus(order, OrderStatus.ACCEPTED)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.cancel("order-1", "Cambio de planes")
 
@@ -507,7 +517,7 @@ class OrderServiceTest {
             val order = createOrder()
             setOrderStatus(order, OrderStatus.DELIVERING)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.cancel("order-1", "Emergencia")
 
@@ -543,9 +553,9 @@ class OrderServiceTest {
             setOrderId(accepted1, "a1")
             setOrderStatus(accepted1, OrderStatus.ACCEPTED)
 
-            whenever(orderRepository.findByProviderIdAndStatus("provider-123", OrderStatus.PENDING))
+            whenever(orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc("provider-123", OrderStatus.PENDING))
                 .thenReturn(listOf(pending1, pending2))
-            whenever(orderRepository.findByProviderIdAndStatus("provider-123", OrderStatus.ACCEPTED))
+            whenever(orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc("provider-123", OrderStatus.ACCEPTED))
                 .thenReturn(listOf(accepted1))
 
             service.cancelProviderOrders("provider-123", "Proveedor no disponible")
@@ -563,9 +573,9 @@ class OrderServiceTest {
 
         @Test
         fun `should handle empty lists`() {
-            whenever(orderRepository.findByProviderIdAndStatus("provider-123", OrderStatus.PENDING))
+            whenever(orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc("provider-123", OrderStatus.PENDING))
                 .thenReturn(emptyList())
-            whenever(orderRepository.findByProviderIdAndStatus("provider-123", OrderStatus.ACCEPTED))
+            whenever(orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc("provider-123", OrderStatus.ACCEPTED))
                 .thenReturn(emptyList())
 
             service.cancelProviderOrders("provider-123", "Motivo")
@@ -584,7 +594,7 @@ class OrderServiceTest {
             val order = createOrder()
             setOrderStatus(order, OrderStatus.ACCEPTED)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.confirmStart("order-1", ConfirmingParty.CUSTOMER)
 
@@ -603,7 +613,7 @@ class OrderServiceTest {
             setOrderStatus(order, OrderStatus.ACCEPTED)
             order.startConfirmation.confirm(ConfirmingParty.CUSTOMER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.confirmStart("order-1", ConfirmingParty.PROVIDER)
 
@@ -651,7 +661,7 @@ class OrderServiceTest {
             val order = createOrder()
             setOrderStatus(order, OrderStatus.ACCEPTED)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.denyStart("order-1", ConfirmingParty.CUSTOMER, "No estoy listo")
 
@@ -669,7 +679,7 @@ class OrderServiceTest {
             setOrderStatus(order, OrderStatus.ACCEPTED)
             order.startConfirmation.confirm(ConfirmingParty.PROVIDER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.denyStart("order-1", ConfirmingParty.CUSTOMER, "El proveedor no llego")
 
@@ -686,7 +696,7 @@ class OrderServiceTest {
             setOrderStatus(order, OrderStatus.ACCEPTED)
             order.startConfirmation.deny(ConfirmingParty.CUSTOMER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.denyStart("order-1", ConfirmingParty.PROVIDER, "No puedo ir")
 
@@ -733,7 +743,7 @@ class OrderServiceTest {
             val order = createOrder()
             setOrderStatus(order, OrderStatus.DELIVERING)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.confirmCompletion("order-1", ConfirmingParty.PROVIDER)
 
@@ -750,7 +760,7 @@ class OrderServiceTest {
             setOrderStatus(order, OrderStatus.DELIVERING)
             order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.confirmCompletion("order-1", ConfirmingParty.PROVIDER)
 
@@ -798,7 +808,7 @@ class OrderServiceTest {
             val order = createOrder()
             setOrderStatus(order, OrderStatus.DELIVERING)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.denyCompletion("order-1", ConfirmingParty.CUSTOMER, "No se completo")
 
@@ -811,7 +821,7 @@ class OrderServiceTest {
             setOrderStatus(order, OrderStatus.DELIVERING)
             order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.denyCompletion("order-1", ConfirmingParty.CUSTOMER, "No se hizo el trabajo")
 
@@ -827,7 +837,7 @@ class OrderServiceTest {
             setOrderStatus(order, OrderStatus.DELIVERING)
             order.completionConfirmation.deny(ConfirmingParty.CUSTOMER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.denyCompletion("order-1", ConfirmingParty.PROVIDER, "No se pudo completar")
 
@@ -863,7 +873,7 @@ class OrderServiceTest {
             order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
             order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.confirmPayment("order-1", ConfirmingParty.CUSTOMER)
 
@@ -882,7 +892,7 @@ class OrderServiceTest {
             order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
             order.paymentConfirmation.confirm(ConfirmingParty.CUSTOMER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.confirmPayment("order-1", ConfirmingParty.PROVIDER)
 
@@ -947,7 +957,7 @@ class OrderServiceTest {
             order.completionConfirmation.confirm(ConfirmingParty.CUSTOMER)
             order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.denyPayment("order-1", ConfirmingParty.CUSTOMER, "No se realizo el pago")
 
@@ -963,7 +973,7 @@ class OrderServiceTest {
             order.completionConfirmation.confirm(ConfirmingParty.PROVIDER)
             order.paymentConfirmation.confirm(ConfirmingParty.PROVIDER)
             whenever(orderRepository.findById("order-1")).thenReturn(Optional.of(order))
-            whenever(orderRepository.save(any<Order>())).thenAnswer { it.arguments[0] }
+            whenever(orderRepository.save(any<Order>())).thenAnswer { persisted(it.arguments[0] as Order) }
 
             service.denyPayment("order-1", ConfirmingParty.CUSTOMER, "No me pagaron")
 
@@ -1009,7 +1019,7 @@ class OrderServiceTest {
         @Test
         fun `should return all orders for provider`() {
             val orders = listOf(createOrder(), createOrder())
-            whenever(orderRepository.findByProviderId("provider-123")).thenReturn(orders)
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-123")).thenReturn(orders)
 
             val result = service.findOrdersByProvider("provider-123")
 
@@ -1020,7 +1030,7 @@ class OrderServiceTest {
         fun `should return filtered orders by status`() {
             val order = createOrder()
             setOrderStatus(order, OrderStatus.ACCEPTED)
-            whenever(orderRepository.findByProviderIdAndStatus("provider-123", OrderStatus.ACCEPTED))
+            whenever(orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc("provider-123", OrderStatus.ACCEPTED))
                 .thenReturn(listOf(order))
 
             val result = service.findOrdersByProvider("provider-123", OrderStatus.ACCEPTED)
@@ -1033,7 +1043,7 @@ class OrderServiceTest {
 
         @Test
         fun `should return empty list when no orders`() {
-            whenever(orderRepository.findByProviderId("provider-999")).thenReturn(emptyList())
+            whenever(orderRepository.findByProviderIdOrderByUpdatedAtDesc("provider-999")).thenReturn(emptyList())
 
             val result = service.findOrdersByProvider("provider-999")
 
@@ -1047,7 +1057,7 @@ class OrderServiceTest {
         @Test
         fun `should return all orders for service`() {
             val orders = listOf(createOrder())
-            whenever(orderRepository.findByCatalogItemId("service-1")).thenReturn(orders)
+            whenever(orderRepository.findByCatalogItemIdOrderByUpdatedAtDesc("service-1")).thenReturn(orders)
 
             val result = service.findOrdersByService("service-1")
 
@@ -1056,7 +1066,7 @@ class OrderServiceTest {
 
         @Test
         fun `should return filtered orders by status`() {
-            whenever(orderRepository.findByCatalogItemIdAndStatus("service-1", OrderStatus.PENDING))
+            whenever(orderRepository.findByCatalogItemIdAndStatusOrderByUpdatedAtDesc("service-1", OrderStatus.PENDING))
                 .thenReturn(listOf(createOrder()))
 
             val result = service.findOrdersByService("service-1", OrderStatus.PENDING)
@@ -1066,7 +1076,7 @@ class OrderServiceTest {
 
         @Test
         fun `should return empty list when no orders for service`() {
-            whenever(orderRepository.findByCatalogItemId("service-999")).thenReturn(emptyList())
+            whenever(orderRepository.findByCatalogItemIdOrderByUpdatedAtDesc("service-999")).thenReturn(emptyList())
 
             val result = service.findOrdersByService("service-999")
 
@@ -1080,7 +1090,7 @@ class OrderServiceTest {
         @Test
         fun `should return all orders for client`() {
             val orders = listOf(createOrder(), createOrder())
-            whenever(orderRepository.findByClientId("client-456")).thenReturn(orders)
+            whenever(orderRepository.findByClientIdOrderByUpdatedAtDesc("client-456")).thenReturn(orders)
 
             val result = service.findOrdersByClient("client-456")
 
@@ -1089,7 +1099,7 @@ class OrderServiceTest {
 
         @Test
         fun `should return filtered orders by status`() {
-            whenever(orderRepository.findByClientIdAndStatus("client-456", OrderStatus.COMPLETED))
+            whenever(orderRepository.findByClientIdAndStatusOrderByUpdatedAtDesc("client-456", OrderStatus.COMPLETED))
                 .thenReturn(emptyList())
 
             val result = service.findOrdersByClient("client-456", OrderStatus.COMPLETED)
@@ -1099,7 +1109,7 @@ class OrderServiceTest {
 
         @Test
         fun `should return empty list when client has no orders`() {
-            whenever(orderRepository.findByClientId("client-999")).thenReturn(emptyList())
+            whenever(orderRepository.findByClientIdOrderByUpdatedAtDesc("client-999")).thenReturn(emptyList())
 
             val result = service.findOrdersByClient("client-999")
 

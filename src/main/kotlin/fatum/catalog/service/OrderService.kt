@@ -4,7 +4,10 @@ import fatum.catalog.client.UserServiceClient
 import fatum.catalog.dto.request.order.BookService
 import fatum.catalog.dto.request.order.OrderResponse
 import fatum.catalog.dto.mapper.toEntity
+
 import fatum.catalog.exception.CatalogErrorCode
+import fatum.catalog.event.order.ConfirmationType
+import fatum.catalog.event.order.OrderEventPublisher
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
 import fatum.catalog.model.Order
@@ -14,6 +17,7 @@ import fatum.catalog.model.constant.ServiceStatus
 import fatum.catalog.model.vo.DualConfirmation
 import fatum.catalog.model.vo.QuestionAnswer
 import fatum.catalog.repository.OrderRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -26,6 +30,7 @@ class OrderService(
     private val providerAvailabilityService: ProviderAvailabilityService,
     private val providerUnavailableRangeService: ProviderUnavailableRangeService,
     private val catalogItemService: CatalogItemService,
+    private val orderEventPublisher: OrderEventPublisher,
 ) {
     private val gapTime: Int = 30
 
@@ -36,12 +41,19 @@ class OrderService(
         validateUser(order.clientId)
         val item = getService(order.serviceId)
         validateAnswers(item, order.answers)
+        if (order.clientId == item.providerId)
+            throw FatumServiceException(CatalogErrorCode.PROVIDER_AND_CLIENT)
 
         if (!providerIsFree(item.providerId, order.booking))
             throw FatumServiceException(CatalogErrorCode.PROVIDER_UNAVAILABLE)
 
         val client = userServiceClient.getUserById(order.clientId)
-        orderRepository.save(order.toEntity(item, client))
+        val saved = orderRepository.save(order.toEntity(item, client))
+        orderEventPublisher.orderCreated(
+            orderId = saved.id!!,
+            providerId = saved.providerId,
+            catalogItemTitle = saved.catalogItem.title
+        )
     }
 
     //==========================================ACCEPT/REJECT=====================================================
@@ -56,6 +68,7 @@ class OrderService(
 
         val order = getOrder(response.orderId)
 
+
         if (order.status != OrderStatus.PENDING)
             throw FatumServiceException(CatalogErrorCode.INVALID_STATUS_TRANSITION)
 
@@ -64,29 +77,64 @@ class OrderService(
 
         order.changeStatus(response.status, response.reason)
         order.estimatedTime = response.estimatedTime
+        order.update()
         orderRepository.save(order)
 
-
+        orderEventPublisher.statusChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            newStatus = order.status,
+            reason = response.reason
+        )
     }
 
     //==========================================CANCEL============================================================
 
     @Transactional
-    fun cancel(orderId: String, reason: String) {
+    fun cancel(orderId : String,reason: String) {
         val order = getOrder(orderId)
         order.changeStatus(OrderStatus.CANCELLED, reason)
+        order.update()
         orderRepository.save(order)
+
+        orderEventPublisher.statusChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            newStatus = order.status,
+            reason = reason
+        )
+
     }
 
     @Transactional
-    fun cancelProviderOrders(providerId: String, reason: String) {
-        val pendingOrders = orderRepository.findByProviderIdAndStatus(providerId, OrderStatus.PENDING)
-        pendingOrders.forEach { it.changeStatus(OrderStatus.REJECTED, reason) }
+    fun cancelProviderOrders(providerId : String,reason: String) {
+        val pendingOrders = orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, OrderStatus.PENDING)
+        pendingOrders.forEach {
+            it.changeStatus(OrderStatus.REJECTED, reason)
+            it.update()
+        }
         orderRepository.saveAll(pendingOrders)
 
-        val acceptedOrders = orderRepository.findByProviderIdAndStatus(providerId, OrderStatus.ACCEPTED)
-        acceptedOrders.forEach { it.changeStatus(OrderStatus.CANCELLED, reason) }
+        val acceptedOrders = orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, OrderStatus.ACCEPTED)
+        acceptedOrders.forEach {
+            it.changeStatus(OrderStatus.CANCELLED, reason)
+            it.update()
+        }
         orderRepository.saveAll(acceptedOrders)
+
+        (pendingOrders + acceptedOrders).forEach {
+            orderEventPublisher.statusChanged(
+                orderId = it.id!!,
+                clientId = it.clientId,
+                providerId = it.providerId,
+                newStatus = it.status,
+                reason = reason
+            )
+        }
+
+
     }
 
     //==========================================CONFIRMATIONS=====================================================
@@ -99,12 +147,25 @@ class OrderService(
         validateNotResponded(order.startConfirmation, party)
 
         order.startConfirmation.confirm(party)
+        val statusChanged = order.startConfirmation.isConfirmed
 
-        if (order.startConfirmation.isConfirmed) {
+        if (statusChanged) {
             order.changeStatus(OrderStatus.DELIVERING)
             order.deliveryStartedAt = LocalDateTime.now()
         }
+        order.update()
         orderRepository.save(order)
+
+
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.START.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.startConfirmation.isConfirmed
+        )
     }
 
     @Transactional
@@ -116,10 +177,23 @@ class OrderService(
 
         order.startConfirmation.deny(party)
 
-        if (order.startConfirmation.isContradicted)
-            order.changeStatus(OrderStatus.DISPUTED, reason)
+        val statusChanged = order.startConfirmation.isContradicted
 
+        if (statusChanged)
+            order.changeStatus(OrderStatus.DISPUTED, reason)
+        order.update()
         orderRepository.save(order)
+
+
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.START.name,
+            party = party.name,
+            confirmed = false,
+            bothConfirmed = false
+        )
     }
 
     @Transactional
@@ -130,7 +204,17 @@ class OrderService(
         validateNotResponded(order.completionConfirmation, party)
 
         order.completionConfirmation.confirm(party)
+        order.update()
         orderRepository.save(order)
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.COMPLETION.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.completionConfirmation.isConfirmed
+        )
     }
 
     @Transactional
@@ -146,8 +230,17 @@ class OrderService(
             order.changeStatus(OrderStatus.DISPUTED, reason)
         else if (order.completionConfirmation.isBothDenied)
             order.changeStatus(OrderStatus.NOT_DELIVERED, reason)
-
+        order.update()
         orderRepository.save(order)
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.COMPLETION.name,
+            party = party.name,
+            confirmed = false,
+            bothConfirmed = false
+        )
     }
 
     @Transactional
@@ -164,7 +257,17 @@ class OrderService(
         if (order.paymentConfirmation.isConfirmed)
             order.changeStatus(OrderStatus.COMPLETED)
 
+        order.update()
         orderRepository.save(order)
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.PAYMENT.name,
+            party = party.name,
+            confirmed = true,
+            bothConfirmed = order.paymentConfirmation.isConfirmed
+        )
     }
 
     @Transactional
@@ -181,25 +284,35 @@ class OrderService(
         if (order.paymentConfirmation.isContradicted)
             order.changeStatus(OrderStatus.DISPUTED, reason)
 
+        order.update()
         orderRepository.save(order)
+        orderEventPublisher.confirmationChanged(
+            orderId = order.id!!,
+            clientId = order.clientId,
+            providerId = order.providerId,
+            confirmation = ConfirmationType.PAYMENT.name,
+            party = party.name,
+            confirmed = false,
+            bothConfirmed = false
+        )
     }
 
     //==========================================READ ONLY=========================================================
 
     @Transactional(readOnly = true)
     fun findOrdersByProvider(providerId: String, status: OrderStatus? = null): List<Order> =
-        if (status != null) orderRepository.findByProviderIdAndStatus(providerId, status)
-        else orderRepository.findByProviderId(providerId)
+        if (status != null) orderRepository.findByProviderIdAndStatusOrderByUpdatedAtDesc(providerId, status)
+        else orderRepository.findByProviderIdOrderByUpdatedAtDesc(providerId)
 
     @Transactional(readOnly = true)
     fun findOrdersByService(serviceId: String, status: OrderStatus? = null): List<Order> =
-        if (status != null) orderRepository.findByCatalogItemIdAndStatus(serviceId, status)
-        else orderRepository.findByCatalogItemId(serviceId)
+        if (status != null) orderRepository.findByCatalogItemIdAndStatusOrderByUpdatedAtDesc(serviceId, status)
+        else orderRepository.findByCatalogItemIdOrderByUpdatedAtDesc(serviceId)
 
     @Transactional(readOnly = true)
     fun findOrdersByClient(clientId: String, status: OrderStatus? = null): List<Order> =
-        if (status != null) orderRepository.findByClientIdAndStatus(clientId, status)
-        else orderRepository.findByClientId(clientId)
+        if (status != null) orderRepository.findByClientIdAndStatusOrderByUpdatedAtDesc(clientId, status)
+        else orderRepository.findByClientIdOrderByUpdatedAtDesc(clientId)
 
     @Transactional(readOnly = true)
     fun findActiveOrders(
@@ -207,6 +320,24 @@ class OrderService(
         start: LocalDateTime,
         end: LocalDateTime
     ) : List<Order> = getActiveOrders(providerId, start, end)
+
+    @Transactional(readOnly = true)
+    fun findOrderById(orderId: String) : Order = getOrder(orderId)
+
+    //==========================================METRICS============================================================
+
+    @Transactional(readOnly = true)
+    fun countByService(serviceId: String): Long =
+        orderRepository.countByCatalogItemId(serviceId)
+
+    @Transactional(readOnly = true)
+    fun countByServiceGroupedByStatus(serviceId: String): Map<OrderStatus, Int> =
+        orderRepository.countByServiceGroupedByStatus(serviceId)
+            .associate { row -> (row[0] as OrderStatus) to (row[1] as Long).toInt() }
+
+    @Transactional(readOnly = true)
+    fun countNewOrdersInPeriod(serviceId: String, start: LocalDateTime, end: LocalDateTime): Long =
+        orderRepository.countNewOrdersInPeriod(serviceId, start, end)
 
     //==========================================HELPERS============================================================
 
@@ -243,7 +374,7 @@ class OrderService(
     }
 
     private fun reviewOrderOverlap(providerId: String, booking: LocalDateTime) {
-        val providerOrders = orderRepository.findByProviderId(providerId)
+        val providerOrders = orderRepository.findByProviderIdOrderByUpdatedAtDesc(providerId)
         val overlap = providerOrders.any { timeGapPolicy(it.booking, booking) }
         if (overlap) throw FatumServiceException(CatalogErrorCode.OVERLAPPING_RANGE)
     }
@@ -258,10 +389,10 @@ class OrderService(
         end: LocalDateTime
     ): List<Order> {
 
-        val accepted = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+        val accepted = orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
             providerId, OrderStatus.ACCEPTED, start, end
         )
-        val delivering = orderRepository.findByProviderIdAndStatusAndBookingBetween(
+        val delivering = orderRepository.findByProviderIdAndStatusAndBookingBetweenOrderByUpdatedAtDesc(
             providerId, OrderStatus.DELIVERING, start, end
         )
         return accepted + delivering

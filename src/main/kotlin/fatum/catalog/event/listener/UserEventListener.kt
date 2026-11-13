@@ -1,4 +1,4 @@
-package fatum.catalog.listener
+package fatum.catalog.event.listener
 
 import tools.jackson.databind.ObjectMapper
 import tools.jackson.databind.JsonNode

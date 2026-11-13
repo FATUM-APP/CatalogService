@@ -55,7 +55,7 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
     ALREADY_RESPONDED("Party has already responded to this confirmation", HttpStatus.CONFLICT),
     MISSING_ANSWERS("All required questions must be answered", HttpStatus.BAD_REQUEST),
     ACCEPTED_ORDERS_EXIST("There are accepted orders in the requested unavailability range", HttpStatus.CONFLICT),
-
+    PROVIDER_AND_CLIENT("Provider can't hire his own services", HttpStatus.BAD_REQUEST),
     // Usuario
     NOT_A_PROFESSIONAL("User is not a professional", HttpStatus.BAD_REQUEST),
     INVALID_USER("User is not active or not verified", HttpStatus.BAD_REQUEST),
@@ -63,4 +63,7 @@ enum class CatalogErrorCode(val defaultMessage: String, val httpStatus: HttpStat
     //Schedule
     AVAILABILITY_NOT_FOUND("Availability not found", HttpStatus.NOT_FOUND),
     UNAVAILABILITY_NOT_FOUND("Unavailable range not found", HttpStatus.NOT_FOUND),
+
+    // Metrics
+    METRICS_NOT_FOUND("Metrics not found for this service", HttpStatus.NOT_FOUND),
 }
