@@ -83,7 +83,7 @@ fun Order.toClient() =
 fun Order.toProvider() =
     ProviderOrder(
         id = this.id,
-        clientUsername = this.catalogItem.providerUsername,
+        clientUsername = this.clientUsername,
         catalogItemTitle = this.catalogItem.title,
         booking = this.booking,
         negotiatedPrice = this.negotiatedPrice.toPlainString(),

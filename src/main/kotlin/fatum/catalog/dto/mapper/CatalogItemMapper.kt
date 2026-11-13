@@ -44,6 +44,7 @@ fun CatalogItem.toDto(): ItemResponse =
         defaultEstimatedTime = this.defaultEstimatedTime,
         jobType = this.jobType.name,
         category = this.category.slug,
-        fixedQuestions = this.fixedQuestions
+        fixedQuestions = this.fixedQuestions,
+        providerId = this.providerId
     )
 
