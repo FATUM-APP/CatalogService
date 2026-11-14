@@ -20,18 +20,23 @@ class ClientFavoriteService(
     @Transactional
     fun addFavorite(request: FavoriteRequest) {
         val item = catalogItemService.findById(request.serviceId, ServiceStatus.ACTIVE)
-        if (favoriteRepository.existsByClientIdAndCatalogItemId(request.clientId, item.id!!))
-            throw FatumServiceException(CatalogErrorCode.ALREADY_FAVORITE)
-        favoriteRepository.save(ClientFavorite(request.clientId, item))
-        metricsService.incrementFavorites(item.id!!)
+        if(item.providerId == request.clientId)
+            throw FatumServiceException(CatalogErrorCode.PROVIDER_AND_CLIENT)
+        if (!favoriteRepository.existsByClientIdAndCatalogItemId(request.clientId, item.id!!)){
+            favoriteRepository.save(ClientFavorite(request.clientId, item))
+            metricsService.incrementFavorites(item.id!!)
+        }
+
     }
 
     @Transactional
     fun removeFavorite(request: FavoriteRequest) {
-        if (!favoriteRepository.existsByClientIdAndCatalogItemId(request.clientId, request.serviceId))
-            throw FatumServiceException(CatalogErrorCode.FAVORITE_NOT_FOUND)
-        favoriteRepository.deleteByClientIdAndCatalogItemId(request.clientId, request.serviceId)
-        metricsService.decrementFavorites(request.serviceId)
+        val favorite = favoriteRepository.findByClientIdAndCatalogItemId(request.clientId, request.serviceId)
+        favorite?.let {
+            favoriteRepository.delete(it)
+            metricsService.decrementFavorites(request.serviceId)
+        }
+
     }
 
     @Transactional(readOnly = true)

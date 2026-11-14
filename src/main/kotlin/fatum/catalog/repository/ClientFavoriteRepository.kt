@@ -27,6 +27,5 @@ interface ClientFavoriteRepository : JpaRepository<ClientFavorite, String> {
     ): List<ClientFavorite>
 
     fun existsByClientIdAndCatalogItemId(clientId: String, serviceId: String): Boolean
-
-    fun deleteByClientIdAndCatalogItemId(clientId: String, serviceId: String)
+    fun findByClientIdAndCatalogItemId(clientId: String, serviceId: String): ClientFavorite?
 }
