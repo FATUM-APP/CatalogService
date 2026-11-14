@@ -12,5 +12,7 @@ enum class OrderEventType {
     ORDER_STATUS_CHANGED,
 
     /** Una de las dos partes confirmó o negó un paso (inicio, entrega, pago). */
-    ORDER_CONFIRMATION_CHANGED
+    ORDER_CONFIRMATION_CHANGED,
+
+    ORDER_COMPLETED
 }

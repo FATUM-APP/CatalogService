@@ -59,6 +59,25 @@ class OrderEventPublisher(
         )
     }
 
+    fun orderCompleted(
+        orderId : String,
+        serviceId: String,
+        clientId: String,
+        providerId: String,
+        status: String,
+    ) {
+        publish(
+            OrderEventType.ORDER_COMPLETED,
+            mapOf(
+                "orderId" to orderId,
+                "serviceId" to serviceId,
+                "clientId" to clientId,
+                "providerId" to providerId,
+                "status" to status,
+            )
+        )
+    }
+
     fun confirmationChanged(
         orderId: String,
         clientId: String,
