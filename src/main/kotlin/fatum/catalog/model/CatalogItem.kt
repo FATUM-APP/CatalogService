@@ -32,6 +32,12 @@ class CatalogItem(
     val providerId: String,
     title: String,
 
+    @Column(name = "PROVIDER_NAME", length = 255, nullable = false)
+    val providerName: String,
+
+    @Column(name = "PROVIDER_USERNAME", length = 15, nullable = false)
+    val providerUsername: String,
+
     @Column(name = "DESCRIPTION", columnDefinition = "TEXT")
     var description: String? = null,
 
@@ -75,7 +81,7 @@ class CatalogItem(
         field = toTitle(value)
     }
 
-    @Column(name = "BASE_PRICE", nullable = false)
+    @Column(name = "BASE_PRICE", nullable = false, precision = 10, scale = 2)
     var basePrice: BigDecimal = BigDecimal.ZERO
         set(value) {
             if (value < BigDecimal.ZERO) {
@@ -104,6 +110,8 @@ class CatalogItem(
     var status: ServiceStatus = ServiceStatus.ACTIVE
 
 
+
+
     init {
         if (providerId.isBlank()) throw FatumServiceException(CatalogErrorCode.BLANK)
         this.title = title
@@ -126,6 +134,7 @@ class CatalogItem(
             word.lowercase().replaceFirstChar { it.uppercase() }
         }
     }
+
 
     override fun equals(other: Any?): Boolean {
         if (other !is CatalogItem) return false

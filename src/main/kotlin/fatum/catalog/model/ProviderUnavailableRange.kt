@@ -49,24 +49,15 @@ class ProviderUnavailableRange(
     }
 
 
-    constructor(providerId: String, start: LocalDate, end: LocalDate)
-            : this(providerId, null,
+    constructor(providerId: String, reason: String? = null, start: LocalDate, end: LocalDate)
+            : this(providerId, reason,
         start.atStartOfDay(),
         end.atTime(23, 59))
 
-    constructor(providerId: String, start: LocalDateTime, end: LocalDate)
-            : this(providerId, null,
-        start,
-        end.atTime(23, 59))
-
-    constructor(providerId: String, start: LocalDate, end: LocalDateTime)
-            : this(providerId, null,
-        start.atStartOfDay(),
-        end)
 
     fun changeDates(
-        newStartDate: LocalDateTime = this.startDate,
-        newFinalDate: LocalDateTime = this.finalDate
+        newStartDate: LocalDateTime,
+        newFinalDate: LocalDateTime
     ) {
         validateDates(newStartDate, newFinalDate)
         this.startDate = newStartDate
@@ -82,8 +73,8 @@ class ProviderUnavailableRange(
     override fun equals(other: Any?): Boolean {
         if (other !is ProviderUnavailableRange) return false
         if (this === other) return true
-        return this.id == other.id
+        return id != null && id == other.id
     }
 
-    override fun hashCode(): Int = this.id?.hashCode() ?: 0
+    override fun hashCode(): Int = javaClass.hashCode()
 }

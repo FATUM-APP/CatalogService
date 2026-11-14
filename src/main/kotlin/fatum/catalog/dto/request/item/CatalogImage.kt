@@ -1,4 +1,4 @@
-package fatum.catalog.dto
+package fatum.catalog.dto.request.item
 
 data class CatalogImage(
     val id: String,

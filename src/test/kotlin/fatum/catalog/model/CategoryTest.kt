@@ -16,10 +16,10 @@ import kotlin.test.assertContains
 
 class CategoryTest {
     private fun createRoot(name: String = "Belleza", schedulingModel: SchedulingModel = SchedulingModel.SINGLE_SESSION)
-    = Category(name, schedulingModel)
+            = Category(name, schedulingModel)
 
     private fun createSub(name: String = "Barberia y Peluqueria", parent: Category = createRoot())
-    = Category(name, parent)
+            = Category(name, parent)
 
     private fun createCatalogItem(
         providerId: String = "provider-123",
@@ -29,12 +29,14 @@ class CategoryTest {
         category: Category = createRoot(),
         estimatedTime: Int? = null
     ) = CatalogItem(
-    providerId = providerId,
-    title = title,
-    priceType = priceType,
-    jobType = jobType,
-    category = category,
-    defaultEstimatedTime = estimatedTime)
+        providerId = providerId,
+        title = title,
+        providerName = "Provider Test",
+        providerUsername = "providertest",
+        priceType = priceType,
+        jobType = jobType,
+        category = category,
+        defaultEstimatedTime = estimatedTime)
 
 
     @Nested
@@ -207,8 +209,8 @@ class CategoryTest {
 
             assertEquals(CatalogErrorCode.CATEGORY_HAS_SUBCATEGORIES
                 ,assertThrows<FatumServiceException> {
-                createCatalogItem(category = parent)
-            }.errorCode)
+                    createCatalogItem(category = parent)
+                }.errorCode)
         }
     }
 }

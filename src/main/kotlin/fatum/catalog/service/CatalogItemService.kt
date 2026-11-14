@@ -1,10 +1,12 @@
 package fatum.catalog.service
 
-import fatum.catalog.dto.CatalogImage
-import fatum.catalog.dto.CreateServiceRequest
-import fatum.catalog.dto.UpdateServiceRequest
+import fatum.catalog.client.UserServiceClient
+import fatum.catalog.dto.request.item.CatalogImage
+import fatum.catalog.dto.request.item.CreateServiceRequest
+import fatum.catalog.dto.request.item.UpdateServiceRequest
 
 import fatum.catalog.dto.mapper.toEntity
+import fatum.catalog.dto.request.item.ActivateCatalogItem
 import fatum.catalog.exception.CatalogErrorCode
 import fatum.catalog.exception.FatumServiceException
 import fatum.catalog.model.CatalogItem
@@ -24,7 +26,8 @@ class CatalogItemService(
     private val catalogItemRepository: CatalogItemRepository,
     private val categoryService: CategoryService,
     private val fileStorageClient: FileStorageClient,
-    @Value("\${catalog.images.storage-route}") private val storageRoute: String
+    @Value("\${catalog.images.storage-route}") private val storageRoute: String,
+    private val userServiceClient: UserServiceClient,
 ) {
     //==========================================CREATE==============================================
 
@@ -34,13 +37,18 @@ class CatalogItemService(
      * @param images
      */
     @Transactional
-    fun createCatalogItem(request: CreateServiceRequest, images: List<MultipartFile>): CatalogItem {
+    fun createCatalogItem(request: CreateServiceRequest, images: List<MultipartFile>) : String{
+        validateProfessional(request.providerId)
         validateImages(images)
         validateUniqueness(request)
 
         val serviceImages = transformToServiceImages(images)
         val category = categoryService.findCategory(request.category,true)
-        return catalogItemRepository.save(request.toEntity(serviceImages, category))
+         return catalogItemRepository.save(request.toEntity(
+            serviceImages,
+            category,
+            userServiceClient.getUserById(request.providerId)
+            )).id!!
     }
 
 
@@ -50,6 +58,10 @@ class CatalogItemService(
     fun findById(id : String, status : ServiceStatus? = null) : CatalogItem =
         getById(id, status)
 
+    @Transactional(readOnly = true)
+    fun findByProviderAndCategory(providerId: String, categoryName: String? = null, status : ServiceStatus? = null) : List<CatalogItem> =
+        getByProviderAndCategory(providerId, categoryName, status)
+
     /**
      * Searches catalog items by title
      * @param title
@@ -57,8 +69,7 @@ class CatalogItemService(
      */
     @Transactional(readOnly = true)
     fun findByTitle(title: String, serviceStatus: ServiceStatus? = ServiceStatus.ACTIVE): List<CatalogItem> =
-        if(serviceStatus == null)catalogItemRepository.findByTitle(title,null,true)
-        else catalogItemRepository.findByTitle(title, serviceStatus,true)
+        getByTitle(title, serviceStatus)
 
     /**
      * Searches if a catalog has in its title a substring
@@ -83,15 +94,14 @@ class CatalogItemService(
     fun searchInCatalog(keyword: String, status : ServiceStatus? = null): List<CatalogItem> =
         catalogItemRepository.searchInCatalog(keyword,status,true)
 
-    /**
-     * Filter catalog items by combining optional criteria
-     */
+    //DUMMY
     @Transactional(readOnly = true)
     fun filterCatalog(
         priceType: PriceType? = null,
         minPrice: BigDecimal? = BigDecimal.ZERO,
         maxPrice: BigDecimal? = null,
         isNegotiable: Boolean? = null,
+        categoryName: String? = null,
         status: ServiceStatus? = ServiceStatus.ACTIVE
     ): List<CatalogItem> =
         catalogItemsFilter(
@@ -99,6 +109,7 @@ class CatalogItemService(
             minPrice = minPrice,
             maxPrice = maxPrice,
             isNegotiable = isNegotiable,
+            categoryName = categoryName,
             status = status
         )
 
@@ -110,8 +121,9 @@ class CatalogItemService(
         catalogItemsFilter(status = status)
 
     @Transactional(readOnly = true)
-    fun seeCatalogImages(catalogItemId: String, status : ServiceStatus):
+    fun seeCatalogImages(catalogItemId: String, status : ServiceStatus? = null):
             List<CatalogImage> = getImages(catalogItemId,status)
+
 
     //==========================================UPDATE==============================================
 
@@ -121,7 +133,8 @@ class CatalogItemService(
         validateImages(images)
 
         val oldImages = catalogItem.serviceCatalog.toList()
-        catalogItem.serviceCatalog = transformToServiceImages(images).toMutableList()
+        catalogItem.serviceCatalog.clear()
+        catalogItem.serviceCatalog.addAll(transformToServiceImages(images))
         deleteBucketImages(oldImages)
 
 
@@ -151,16 +164,21 @@ class CatalogItemService(
 
         return catalogItemRepository.save(catalogItem)
     }
+
     @Transactional
-    fun deactivate(catalogItemId: String){
-        val catalogItem = getById(catalogItemId)
+    fun deactivate(request: ActivateCatalogItem){
+        val catalogItem = getById(request.id)
+        if(catalogItem.status != ServiceStatus.ACTIVE)
+            throw FatumServiceException(CatalogErrorCode.SERVICE_STATUS_CANT_BE_CHANGED)
         catalogItem.status = ServiceStatus.INACTIVE
         catalogItemRepository.save(catalogItem)
     }
 
     @Transactional
-    fun activate(catalogItemId: String){
-        val catalogItem = getById(catalogItemId)
+    fun activate(request: ActivateCatalogItem){
+        val catalogItem = getById(request.id)
+        if(catalogItem.status != ServiceStatus.INACTIVE)
+            throw FatumServiceException(CatalogErrorCode.SERVICE_STATUS_CANT_BE_CHANGED)
         catalogItem.status = ServiceStatus.ACTIVE
         catalogItemRepository.save(catalogItem)
     }
@@ -170,6 +188,10 @@ class CatalogItemService(
         (if(status == null) catalogItemRepository.findById(id).orElse(null)
         else catalogItemRepository.findByIdFiltered(id,status,true))
             ?: throw FatumServiceException(CatalogErrorCode.SERVICE_NOT_FOUND)
+
+    private fun getByTitle(title: String, serviceStatus: ServiceStatus? = ServiceStatus.ACTIVE): List<CatalogItem> =
+    if(serviceStatus == null)catalogItemRepository.findByTitle(title,null,true)
+    else catalogItemRepository.findByTitle(title, serviceStatus,true)
 
     private fun validateUniqueness(request: CreateServiceRequest) {
         if (catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase(request.category, request.providerId))
@@ -188,6 +210,7 @@ class CatalogItemService(
         minPrice: BigDecimal? = BigDecimal.ZERO,
         maxPrice: BigDecimal? = null,
         isNegotiable: Boolean? = null,
+        categoryName: String? = null,
         status: ServiceStatus? = ServiceStatus.ACTIVE
     ): List<CatalogItem> =
         catalogItemRepository.filterCatalog(
@@ -196,13 +219,29 @@ class CatalogItemService(
             maxPrice = maxPrice,
             isNegotiable = isNegotiable,
             status = status,
+            categoryName = categoryName,
             true
         )
+    private fun getByProviderAndCategory(
+        providerId: String,
+        categoryName: String? = null,
+        serviceStatus: ServiceStatus? = null
+        ) : List<CatalogItem> {
+        categoryName?.let { categoryService.findCategory(name = categoryName, isAble = true) }
+        return catalogItemRepository.findByProviderAndOptionalCategory(providerId, categoryName, serviceStatus)
+    }
+
+
+    private fun validateProfessional(providerId: String){
+        val provider = userServiceClient.getUserById(providerId)
+        if (!provider.isValid) throw FatumServiceException(CatalogErrorCode.INVALID_USER)
+        if (!provider.isProfessional) throw FatumServiceException(CatalogErrorCode.NOT_A_PROFESSIONAL)
+    }
 
     //==========================================IMAGES==============================================
     companion object {
         private const val MAX_IMAGES = 10
-        private const val MAX_IMAGE_SIZE = 3L * 1024 * 1024
+        private const val MAX_IMAGE_SIZE = 5L * 1024 * 1024  // 5MB per image
         private val ALLOWED_IMAGE_TYPES = setOf("image/jpeg", "image/png", "image/webp")
     }
     private fun transformToServiceImages(images : List<MultipartFile>) : List<ServiceImage> =

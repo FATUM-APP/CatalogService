@@ -1,11 +1,15 @@
 package fatum.catalog
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
+@ConfigurationPropertiesScan
 class CatalogServiceApplication
 
 fun main(args: Array<String>) {
-	runApplication<CatalogServiceApplication>(*args)
+	runApplication<CatalogServiceApplication>(*args) {
+		setDefaultProperties(mapOf("server.port" to (System.getenv("PORT") ?: "8080")))
+	}
 }

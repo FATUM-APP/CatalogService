@@ -15,6 +15,20 @@ interface CatalogItemRepository : JpaRepository<CatalogItem, String> {
     fun existsByCategoryNameAndProviderIdIgnoreCase(categoryName: String, providerId: String): Boolean
 
     @Query("""
+    SELECT s FROM CatalogItem s
+    JOIN FETCH s.category c
+    LEFT JOIN FETCH c.parent
+    WHERE s.providerId = :providerId
+      AND (:categoryName IS NULL OR c.name = :categoryName)
+      AND (:status IS NULL OR s.status = :status)
+    """)
+    fun findByProviderAndOptionalCategory(
+        @Param("providerId") providerId: String,
+        @Param("categoryName") categoryName: String?,
+        @Param("status") status: ServiceStatus?
+    ): List<CatalogItem>
+
+    @Query("""
         SELECT s FROM CatalogItem s
         WHERE s.id = :id
           AND (:status IS NULL OR s.status = :status)
@@ -77,13 +91,14 @@ interface CatalogItemRepository : JpaRepository<CatalogItem, String> {
     ): List<CatalogItem>
 
     @Query("""
-        SELECT s FROM CatalogItem s
-        WHERE (:status IS NULL OR s.status = :status)
-          AND (:priceType IS NULL OR s.priceType = :priceType)
-          AND (:minPrice IS NULL OR s.basePrice >= :minPrice)
-          AND (:maxPrice IS NULL OR s.basePrice <= :maxPrice)
-          AND (:isNegotiable IS NULL OR s.isNegotiable = :isNegotiable)
-          AND (:categoryIsAble IS NULL OR s.category.isAble = :categoryIsAble)
+    SELECT s FROM CatalogItem s
+    WHERE (:status IS NULL OR s.status = :status)
+      AND (:priceType IS NULL OR s.priceType = :priceType)
+      AND (:minPrice IS NULL OR s.basePrice >= :minPrice)
+      AND (:maxPrice IS NULL OR s.basePrice <= :maxPrice)
+      AND (:isNegotiable IS NULL OR s.isNegotiable = :isNegotiable)
+      AND (:categoryName IS NULL OR UPPER(s.category.name) = UPPER(:categoryName))
+      AND (:categoryIsAble IS NULL OR s.category.isAble = :categoryIsAble)
     """)
     fun filterCatalog(
         @Param("priceType") priceType: PriceType?,
@@ -91,6 +106,7 @@ interface CatalogItemRepository : JpaRepository<CatalogItem, String> {
         @Param("maxPrice") maxPrice: BigDecimal?,
         @Param("isNegotiable") isNegotiable: Boolean?,
         @Param("status") status: ServiceStatus?,
+        @Param("categoryName") categoryName: String?,
         @Param("categoryIsAble") categoryIsAble: Boolean?
     ): List<CatalogItem>
 }
