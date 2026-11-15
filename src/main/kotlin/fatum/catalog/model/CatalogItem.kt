@@ -17,10 +17,6 @@ import kotlin.collections.MutableList
     name = "SERVICES",
     uniqueConstraints = [
         UniqueConstraint(
-            name = "uk_services_provider_category",
-            columnNames = ["PROVIDER_ID", "CATEGORY"]
-        ),
-        UniqueConstraint(
             name = "uk_services_provider_title",
             columnNames = ["PROVIDER_ID", "TITLE"]
         )

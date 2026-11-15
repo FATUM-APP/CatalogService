@@ -194,8 +194,6 @@ class CatalogItemService(
     else catalogItemRepository.findByTitle(title, serviceStatus,true)
 
     private fun validateUniqueness(request: CreateServiceRequest) {
-        if (catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase(request.category, request.providerId))
-            throw FatumServiceException(CatalogErrorCode.UK_SERVICES_CATEGORY_PROVIDER)
         validateTitleUniqueness(request.title, request.providerId)
     }
     private fun validateTitleUniqueness(title: String, providerId: String){

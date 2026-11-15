@@ -173,8 +173,7 @@ class CatalogItemServiceTest {
             val provider = validProvider()
 
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(provider)
-            whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
-                .thenReturn(false)
+
             whenever(catalogItemRepository.existsByTitleAndProviderIdIgnoreCase("Mi Servicio", "provider-123"))
                 .thenReturn(false)
             whenever(fileStorageClient.upload(any<MultipartFile>(), eq("test-route")))
@@ -199,6 +198,8 @@ class CatalogItemServiceTest {
             )
             verify(catalogItemRepository).save(any())
             verify(fileStorageClient).upload(any<MultipartFile>(), eq("test-route"))
+            verify(catalogItemRepository, never())
+                .existsByCategoryNameAndProviderIdIgnoreCase(any<String>(), any<String>())
         }
 
         @Test
@@ -311,26 +312,6 @@ class CatalogItemServiceTest {
         }
 
         @Test
-        fun `should throw UK_SERVICES_CATEGORY_PROVIDER when category provider already exists`() {
-            val image = validImage()
-            val request = CreateServiceRequest(
-                providerId = "provider-123", title = "Mi Servicio",
-                priceType = PriceType.FIXED, category = "Plomeria"
-            )
-
-            whenever(userServiceClient.getUserById("provider-123")).thenReturn(validProvider())
-            whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
-                .thenReturn(true)
-
-            val ex = assertThrows<FatumServiceException> {
-                service.createCatalogItem(request, listOf(image))
-            }
-
-            assertEquals(CatalogErrorCode.UK_SERVICES_CATEGORY_PROVIDER, ex.errorCode)
-            verify(catalogItemRepository, never()).save(any())
-        }
-
-        @Test
         fun `should throw UK_SERVICES_TITLE_PROVIDER when title provider already exists`() {
             val image = validImage()
             val request = CreateServiceRequest(
@@ -339,8 +320,6 @@ class CatalogItemServiceTest {
             )
 
             whenever(userServiceClient.getUserById("provider-123")).thenReturn(validProvider())
-            whenever(catalogItemRepository.existsByCategoryNameAndProviderIdIgnoreCase("Plomeria", "provider-123"))
-                .thenReturn(false)
             whenever(catalogItemRepository.existsByTitleAndProviderIdIgnoreCase("Mi Servicio", "provider-123"))
                 .thenReturn(true)
 
