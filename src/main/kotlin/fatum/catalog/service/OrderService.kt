@@ -212,7 +212,7 @@ class OrderService(
             bothConfirmed = order.confirmationOf(stage).isConfirmed
         )
 
-        if (order.status != previousStatus)
+        if (order.status != previousStatus) {
             orderEventPublisher.statusChanged(
                 orderId = order.id!!,
                 clientId = order.clientId,
@@ -220,6 +220,20 @@ class OrderService(
                 newStatus = order.status,
                 reason = order.reason
             )
+
+            if (
+                previousStatus != OrderStatus.COMPLETED &&
+                order.status == OrderStatus.COMPLETED
+            ) {
+                orderEventPublisher.orderCompleted(
+                    orderId = order.id!!,
+                    serviceId = order.catalogItem.id!!,
+                    clientId = order.clientId,
+                    providerId = order.providerId,
+                    status = order.status.name
+                )
+            }
+        }
     }
 
     //==========================================READ ONLY=========================================================
