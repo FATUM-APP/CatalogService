@@ -132,9 +132,9 @@ class CatalogItemController(
     @PutMapping("/update", consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun updateItem(
         @Valid @RequestPart("request") request: UpdateServiceRequest,
-        @RequestPart("images") images: List<MultipartFile>
+        @RequestPart("images", required = false) images: List<MultipartFile>?
     ): ResponseEntity<Void> {
-        catalogItemService.updateCatalogItem(request, images)
+        catalogItemService.updateCatalogItem(request, images ?: emptyList())
         return ResponseEntity.status(HttpStatus.OK).build()
     }
 

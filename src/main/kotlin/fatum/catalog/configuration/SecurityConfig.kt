@@ -48,7 +48,6 @@ class SecurityConfig(
             auth.requestMatchers(HttpMethod.POST, "/catalog/item/create").hasRole(PROFESSIONAL)
             auth.requestMatchers(
                 HttpMethod.PUT,
-                "/catalog/item/update",
                 "/catalog/item/deactivate",
                 "/catalog/item/activate"
             ).hasRole(PROFESSIONAL)
@@ -57,6 +56,14 @@ class SecurityConfig(
             auth.requestMatchers(HttpMethod.POST, "/provider/unavailability/**").hasRole(PROFESSIONAL)
             auth.requestMatchers(HttpMethod.PUT, "/provider/unavailability/**").hasRole(PROFESSIONAL)
             auth.requestMatchers(HttpMethod.DELETE, "/provider/unavailability/**").hasRole(PROFESSIONAL)
+            auth.requestMatchers(HttpMethod.GET, "/order/availability", "/provider/calendar")
+                .hasAnyAuthority("SCOPE_api.catalog-agent/read", "ROLE_VERIFIED", "ROLE_PROFESSIONAL", "ROLE_ADMIN")
+            auth.requestMatchers(HttpMethod.PUT, "/catalog/item/update")
+                // ========================================================
+                // AGREGAR ESTO: quitar "ROLE_VERIFIED" de esta línea.
+                // Ningún otro endpoint de escritura en este archivo lo incluye.
+                // ========================================================
+                .hasAnyAuthority("SCOPE_api.catalog-agent/write", "ROLE_PROFESSIONAL", "ROLE_ADMIN")
 
             // --- VERIFIED (o PROFESSIONAL, o ADMIN) ---
             auth.anyRequest().hasAnyRole(VERIFIED, PROFESSIONAL, ADMIN)
