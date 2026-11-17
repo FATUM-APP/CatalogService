@@ -130,12 +130,14 @@ class CatalogItemService(
     @Transactional
     fun updateCatalogItem(request: UpdateServiceRequest, images: List<MultipartFile>): CatalogItem {
         val catalogItem = getById(request.id)
-        validateImages(images)
 
-        val oldImages = catalogItem.serviceCatalog.toList()
-        catalogItem.serviceCatalog.clear()
-        catalogItem.serviceCatalog.addAll(transformToServiceImages(images))
-        deleteBucketImages(oldImages)
+        if (images.isNotEmpty()) {
+            validateImages(images)
+            val oldImages = catalogItem.serviceCatalog.toList()
+            catalogItem.serviceCatalog.clear()
+            catalogItem.serviceCatalog.addAll(transformToServiceImages(images))
+            deleteBucketImages(oldImages)
+        }
 
 
         request.title?.let {
